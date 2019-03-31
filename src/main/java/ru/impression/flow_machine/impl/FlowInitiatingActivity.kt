@@ -9,7 +9,8 @@ import ru.impression.flow_machine.FlowPerformer
 abstract class FlowInitiatingActivity<F : Flow<*>>(final override val flowClass: Class<F>) :
     AppCompatActivity(), FlowInitiator<F>, FlowPerformer<F> {
 
-    final override fun startFlow() = super.startFlow()
+    final override fun startFlow(holdLastEventsCount: Int, holdLastActionsCount: Int) =
+        super.startFlow(holdLastEventsCount, holdLastActionsCount)
 
     final override fun attachToFlow() = super.attachToFlow()
 

@@ -12,7 +12,8 @@ abstract class FlowInitiatingAndroidViewModel<F : Flow<*>>(
     final override val flowClass: Class<F>
 ) : AndroidViewModel(application), FlowInitiator<F>, FlowPerformer<F> {
 
-    final override fun startFlow() = super.startFlow()
+    final override fun startFlow(holdLastEventsCount: Int, holdLastActionsCount: Int) =
+        super.startFlow(holdLastEventsCount, holdLastActionsCount)
 
     final override fun attachToFlow() = super.attachToFlow()
 

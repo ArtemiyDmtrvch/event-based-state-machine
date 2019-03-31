@@ -1,19 +1,18 @@
 package ru.impression.flow_machine
 
 import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.subjects.BehaviorSubject
 
 interface FlowInitiator<F : Flow<*>> {
 
     val flowClass: Class<F>
 
-    fun startFlow() {
+    fun startFlow(holdLastEventsCount: Int = 0, holdLastActionsCount: Int = 0) {
         flowClass.canonicalName?.let { flowName ->
             DISPOSABLES[flowName]?.let { return }
             val flowInstance = flowClass.newInstance()
             DISPOSABLES[flowName] = CompositeDisposable()
-            EVENT_SUBJECTS[flowName] = BehaviorSubject.create()
-            ACTION_SUBJECTS[flowName] = BehaviorSubject.create()
+            EVENT_SUBJECTS[flowName] = createSubjectForBufferedItemsCount(holdLastEventsCount)
+            ACTION_SUBJECTS[flowName] = createSubjectForBufferedItemsCount(holdLastEventsCount)
             flowInstance.start()
         }
     }

@@ -1,12 +1,14 @@
 package ru.impression.flow_machine.impl
 
-import android.app.Application
+import android.app.Service
+import android.content.Intent
+import android.os.IBinder
 import ru.impression.flow_machine.Flow
 import ru.impression.flow_machine.FlowInitiator
 import ru.impression.flow_machine.FlowPerformer
 
-abstract class FlowInitiatingApplication<F : Flow<*>>(final override val flowClass: Class<F>) :
-    Application(), FlowInitiator<F>, FlowPerformer<F> {
+abstract class FlowInitiatingService<F : Flow<*>>(final override val flowClass: Class<F>) :
+    Service(), FlowInitiator<F>, FlowPerformer<F> {
 
     final override fun startFlow(holdLastEventsCount: Int, holdLastActionsCount: Int) =
         super.startFlow(holdLastEventsCount, holdLastActionsCount)
@@ -23,5 +25,11 @@ abstract class FlowInitiatingApplication<F : Flow<*>>(final override val flowCla
         super.onCreate()
         startFlow()
         attachToFlow()
+    }
+
+    override fun onDestroy() {
+        detachFromFlow()
+        finishFlow()
+        super.onDestroy()
     }
 }
