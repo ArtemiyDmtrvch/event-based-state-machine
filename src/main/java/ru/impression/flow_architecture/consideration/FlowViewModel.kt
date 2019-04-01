@@ -1,11 +1,10 @@
-package ru.impression.flow_machine.impl
+package ru.impression.flow_architecture.consideration
 
 import android.arch.lifecycle.ViewModel
-import io.reactivex.subjects.BehaviorSubject
-import ru.impression.flow_machine.Flow
-import ru.impression.flow_machine.FlowPerformer
+import ru.impression.flow_architecture.Flow
+import ru.impression.flow_architecture.FlowPerformer
 
-abstract class FlowViewModel<F : Flow<*>>(final override val flowClass: Class<F>) : ViewModel(), FlowPerformer<F> {
+abstract class FlowViewModel<F : Flow>(final override val flowClass: Class<F>) : ViewModel(), FlowPerformer<F> {
 
     final override fun attachToFlow() = super.attachToFlow()
 

@@ -1,14 +1,15 @@
-package ru.impression.flow_machine.impl
+package ru.impression.flow_architecture.demonstration
 
 import android.arch.lifecycle.ViewModel
 import android.arch.lifecycle.ViewModelProviders
 import android.os.Bundle
 import android.support.v4.app.DialogFragment
 import android.view.View
-import ru.impression.flow_machine.Flow
-import ru.impression.flow_machine.FlowPerformer
+import ru.impression.flow_architecture.Flow
+import ru.impression.flow_architecture.FlowPerformer
+import ru.impression.flow_architecture.consideration.FlowViewModelFactory
 
-abstract class FlowDialogFragmentWithViewModel<F : Flow<*>, M : ViewModel>(
+abstract class FlowDialogFragmentWithViewModel<F : Flow, M : ViewModel>(
     final override val flowClass: Class<F>,
     private val viewModelClass: Class<M>
 ) : DialogFragment(), FlowPerformer<F> {

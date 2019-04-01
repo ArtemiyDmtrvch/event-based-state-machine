@@ -1,15 +1,11 @@
-package ru.impression.flow_machine.impl
+package ru.impression.flow_architecture.consideration
 
 import android.app.Application
 import android.arch.lifecycle.AndroidViewModel
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.schedulers.Schedulers
-import io.reactivex.subjects.BehaviorSubject
-import ru.impression.flow_machine.DISPOSABLES
-import ru.impression.flow_machine.Flow
-import ru.impression.flow_machine.FlowPerformer
+import ru.impression.flow_architecture.Flow
+import ru.impression.flow_architecture.FlowPerformer
 
-abstract class FlowAndroidViewModel<F : Flow<*>>(
+abstract class FlowAndroidViewModel<F : Flow>(
     application: Application,
     final override val flowClass: Class<F>
 ) : AndroidViewModel(application), FlowPerformer<F> {

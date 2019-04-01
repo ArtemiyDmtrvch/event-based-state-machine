@@ -1,15 +1,12 @@
-package ru.impression.flow_machine.impl
+package ru.impression.flow_architecture.demonstration
 
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
-import ru.impression.flow_machine.Flow
-import ru.impression.flow_machine.FlowInitiator
-import ru.impression.flow_machine.FlowPerformer
+import ru.impression.flow_architecture.Flow
+import ru.impression.flow_architecture.FlowPerformer
 
-abstract class FlowInitiatingActivity<F : Flow<*>>(final override val flowClass: Class<F>) :
-    AppCompatActivity(), FlowInitiator<F>, FlowPerformer<F> {
-
-    final override fun startFlow() = super.startFlow()
+abstract class FlowActivity<F : Flow>(final override val flowClass: Class<F>) :
+    AppCompatActivity(), FlowPerformer<F> {
 
     final override fun attachToFlow() = super.attachToFlow()
 
@@ -17,17 +14,13 @@ abstract class FlowInitiatingActivity<F : Flow<*>>(final override val flowClass:
 
     final override fun detachFromFlow() = super.detachFromFlow()
 
-    final override fun finishFlow() = super.finishFlow()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        startFlow()
         attachToFlow()
     }
 
     override fun onDestroy() {
         detachFromFlow()
-        finishFlow()
         super.onDestroy()
     }
 }

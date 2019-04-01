@@ -4,7 +4,7 @@
 
 <img src="https://www.railjournal.com/images/China-Olympic-EMU-LARGE.jpg" alt="Let your project drive on rails!" height="55%" width="55%"/>
 
-**flow-machine** is a versatile and easy-to-use architecture component that solves very common problems of Android 
+**flow-architecture** is a versatile and easy-to-use architecture component that solves very common problems of Android 
 development. Any Android project has many logical components (Activities, Fragments, Services, Views, etc.) that 
 interact with each other in many different ways. But at the same time, they all perform one common business process, 
 which is mixed with a bunch of technical logic. Because of this:
@@ -12,7 +12,7 @@ which is mixed with a bunch of technical logic. Because of this:
 - even minor changes to one of the components may cause the unexpected behavior of the other
 - if the project is large, you will waste a lot of time to find the place you need
 
-**flow-machine** will save you from all these problems by bringing out the flowchart of your business process, which is 
+**flow-architecture** will save you from all these problems by bringing out the flowchart of your business process, which is 
 designed to be understood by all. Take a look:
 
 ``` kotlin
@@ -71,6 +71,6 @@ allprojects {
 2. Add the dependency:
 ```
 dependencies {
-    implementation 'com.github.ArtemiyDmtrvch:flow:0+'
+    implementation 'com.github.ArtemiyDmtrvch:flow-architecture:0+'
 }
 ```
