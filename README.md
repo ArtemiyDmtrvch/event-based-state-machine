@@ -74,3 +74,5 @@ dependencies {
     implementation 'com.github.ArtemiyDmtrvch:flow-architecture:0+'
 }
 ```
+
+*The documentation is not yet fully written. You may understand this project by looking at [the demo application]( https://github.com/ArtemiyDmtrvch/flow-architecture-example).*
