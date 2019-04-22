@@ -3,7 +3,8 @@ package ru.impression.flow_architecture
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
-import io.reactivex.subjects.BehaviorSubject
+import io.reactivex.subjects.PublishSubject
+import io.reactivex.subjects.ReplaySubject
 import java.util.concurrent.ConcurrentHashMap
 
 interface FlowPerformer<F : Flow> {
@@ -18,8 +19,8 @@ interface FlowPerformer<F : Flow> {
         if (!FLOW_PERFORMER_DISPOSABLES.containsKey(flowName)) {
             FLOW_PERFORMER_DISPOSABLES[flowName] = ConcurrentHashMap()
             FLOW_DISPOSABLES[flowName] = CompositeDisposable()
-            EVENT_SUBJECTS[flowName] = BehaviorSubject.create()
-            ACTION_SUBJECTS[flowName] = BehaviorSubject.create()
+            EVENT_SUBJECTS[flowName] = PublishSubject.create()
+            ACTION_SUBJECTS[flowName] = ReplaySubject.createWithSize(1)
             flowClass.newInstance()
         } else {
             FLOW_PERFORMER_DISPOSABLES[flowName]?.get(thisName)?.dispose()
