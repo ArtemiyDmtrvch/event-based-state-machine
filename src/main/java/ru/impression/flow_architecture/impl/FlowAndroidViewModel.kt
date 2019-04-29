@@ -1,10 +1,14 @@
-package ru.impression.flow_architecture.consideration
+package ru.impression.flow_architecture.impl
 
-import android.arch.lifecycle.ViewModel
+import android.app.Application
+import android.arch.lifecycle.AndroidViewModel
 import ru.impression.flow_architecture.Flow
 import ru.impression.flow_architecture.FlowPerformer
 
-abstract class FlowViewModel<F : Flow>(final override val flowClass: Class<F>) : ViewModel(), FlowPerformer<F> {
+abstract class FlowAndroidViewModel<F : Flow>(
+    application: Application,
+    final override val flowClass: Class<F>
+) : AndroidViewModel(application), FlowPerformer<F> {
 
     final override fun attachToFlow() = super.attachToFlow()
 

@@ -1,11 +1,7 @@
 package ru.impression.flow_architecture
 
 import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
-import io.reactivex.subjects.PublishSubject
-import io.reactivex.subjects.ReplaySubject
-import java.util.concurrent.ConcurrentHashMap
 
 interface FlowPerformer<F : Flow> {
 
@@ -16,15 +12,8 @@ interface FlowPerformer<F : Flow> {
     fun attachToFlow() {
         val flowName = flowClass.notNullName
         val thisName = javaClass.notNullName
-        if (!FLOW_PERFORMER_DISPOSABLES.containsKey(flowName)) {
-            FLOW_PERFORMER_DISPOSABLES[flowName] = ConcurrentHashMap()
-            FLOW_DISPOSABLES[flowName] = CompositeDisposable()
-            EVENT_SUBJECTS[flowName] = PublishSubject.create()
-            ACTION_SUBJECTS[flowName] = ReplaySubject.createWithSize(1)
-            flowClass.newInstance()
-        } else {
-            FLOW_PERFORMER_DISPOSABLES[flowName]?.get(thisName)?.dispose()
-        }
+        FLOW_PERFORMER_DISPOSABLES[flowName]?.get(thisName)?.dispose()
+        FlowManager.startFlowIfNeeded(flowClass)
         ACTION_SUBJECTS[flowName]?.let { actionSubject ->
             actionSubject
                 .subscribeOn(Schedulers.newThread())
@@ -48,11 +37,6 @@ interface FlowPerformer<F : Flow> {
         val flowName = flowClass.notNullName
         val thisName = javaClass.notNullName
         FLOW_PERFORMER_DISPOSABLES[flowName]?.remove(thisName)?.dispose()
-        if (FLOW_PERFORMER_DISPOSABLES[flowName]?.isEmpty() != false) {
-            FLOW_PERFORMER_DISPOSABLES.remove(flowName)
-            FLOW_DISPOSABLES.remove(flowName)?.dispose()
-            EVENT_SUBJECTS.remove(flowName)
-            ACTION_SUBJECTS.remove(flowName)
-        }
+        FlowManager.stopFlowIfNeeded(flowClass)
     }
 }

@@ -1,4 +1,4 @@
-package ru.impression.flow_architecture.demonstration
+package ru.impression.flow_architecture.impl
 
 import android.os.Bundle
 import android.support.v4.app.DialogFragment

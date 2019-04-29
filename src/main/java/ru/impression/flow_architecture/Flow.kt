@@ -12,9 +12,11 @@ abstract class Flow {
         val thisName = javaClass.notNullName
         EVENT_SUBJECTS[thisName]?.let { eventSubject ->
             eventSubject
+                .filter { it is E }
+                .map { it as E }
                 .subscribeOn(Schedulers.newThread())
                 .observeOn(Schedulers.newThread())
-                .subscribe({ event -> if (event is E) onEvent(event) }) { throw  it }
+                .subscribe({ event -> onEvent(event) }) { throw  it }
                 .let { disposable -> FLOW_DISPOSABLES[thisName]?.add(disposable) }
         }
     }
@@ -100,9 +102,15 @@ abstract class Flow {
     protected fun performAction(action: Action) {
         val thisName = javaClass.notNullName
         ACTION_SUBJECTS[thisName]?.onNext(action)
+        if (action is InitiatingAction) {
+            FlowManager.startFlowIfNeeded(action.flowClass)
+            ACTION_SUBJECTS[action.flowClass.notNullName]?.onNext(action)
+        }
     }
 
     abstract class Event
 
     abstract class Action
+
+    abstract class InitiatingAction(val flowClass: Class<out Flow>) : Action()
 }
