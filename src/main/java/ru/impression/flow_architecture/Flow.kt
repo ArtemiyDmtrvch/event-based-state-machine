@@ -8,7 +8,16 @@ import io.reactivex.schedulers.Schedulers
 
 abstract class Flow {
 
-    protected inline fun <reified E : Event> whenEventOccurs(crossinline onEvent: (E) -> Unit) {
+    internal lateinit var initiatingAction: InitiatingAction
+
+    fun init() {
+        if (initiatingAction is RestorativeInitiatingAction<*>)
+            whenEventOccurs<RestoringRequested> {
+                performAction((initiatingAction as RestorativeInitiatingAction<*>).apply { stateStore = it.stateStore })
+            }
+    }
+
+    protected inline fun <reified E : FlowEvent> whenEventOccurs(crossinline onEvent: (E) -> Unit) {
         val thisName = javaClass.notNullName
         EVENT_SUBJECTS[thisName]?.let { eventSubject ->
             eventSubject
@@ -21,7 +30,7 @@ abstract class Flow {
         }
     }
 
-    protected inline fun <reified E1 : Event, reified E2 : Event> whenSeriesOfEventsOccur(
+    protected inline fun <reified E1 : FlowEvent, reified E2 : FlowEvent> whenSeriesOfEventsOccur(
         crossinline onSeriesOfEvents: (E1, E2) -> Unit
     ) {
         val thisName = javaClass.notNullName
@@ -44,7 +53,7 @@ abstract class Flow {
         }
     }
 
-    protected inline fun <reified E1 : Event, reified E2 : Event, reified E3 : Event> whenSeriesOfEventsOccur(
+    protected inline fun <reified E1 : FlowEvent, reified E2 : FlowEvent, reified E3 : FlowEvent> whenSeriesOfEventsOccur(
         crossinline onSeriesOfEvents: (E1, E2, E3) -> Unit
     ) {
         val thisName = javaClass.notNullName
@@ -70,7 +79,7 @@ abstract class Flow {
         }
     }
 
-    protected inline fun <reified E1 : Event, reified E2 : Event, reified E3 : Event, reified E4 : Event> whenSeriesOfEventsOccur(
+    protected inline fun <reified E1 : FlowEvent, reified E2 : FlowEvent, reified E3 : FlowEvent, reified E4 : FlowEvent> whenSeriesOfEventsOccur(
         crossinline onSeriesOfEvents: (E1, E2, E3, E4) -> Unit
     ) {
         val thisName = javaClass.notNullName
@@ -99,7 +108,7 @@ abstract class Flow {
         }
     }
 
-    protected fun performAction(action: Action) {
+    protected fun performAction(action: FlowAction) {
         val thisName = javaClass.notNullName
         ACTION_SUBJECTS[thisName]?.onNext(action)
         if (action is InitiatingAction) {
@@ -108,9 +117,4 @@ abstract class Flow {
         }
     }
 
-    abstract class Event
-
-    abstract class Action
-
-    abstract class InitiatingAction(val flowClass: Class<out Flow>) : Action()
 }

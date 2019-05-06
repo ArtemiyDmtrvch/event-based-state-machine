@@ -13,6 +13,6 @@ internal val FLOW_PERFORMER_DISPOSABLES: ConcurrentHashMap<String, ConcurrentHas
     ConcurrentHashMap()
 
 @PublishedApi
-internal val EVENT_SUBJECTS: ConcurrentHashMap<String, PublishSubject<Flow.Event>> = ConcurrentHashMap()
+internal val EVENT_SUBJECTS: ConcurrentHashMap<String, PublishSubject<FlowEvent>> = ConcurrentHashMap()
 
-internal val ACTION_SUBJECTS: ConcurrentHashMap<String, ReplaySubject<Flow.Action>> = ConcurrentHashMap()
+internal val ACTION_SUBJECTS: ConcurrentHashMap<String, ReplaySubject<FlowAction>> = ConcurrentHashMap()
