@@ -23,15 +23,15 @@ interface FlowPerformer<F : Flow> {
         }
     }
 
-    fun eventOccurred(event: Flow.Event) {
+    fun eventOccurred(event: Event) {
         val flowName = flowClass.notNullName
         eventEnrichers.forEach { it.enrichEvent(event) }
         EVENT_SUBJECTS[flowName]?.onNext(event)
     }
 
-    fun enrichEvent(event: Flow.Event) = Unit
+    fun enrichEvent(event: Event) = Unit
 
-    fun performAction(action: Flow.Action) = Unit
+    fun performAction(action: Action) = Unit
 
     fun detachFromFlow() {
         val flowName = flowClass.notNullName

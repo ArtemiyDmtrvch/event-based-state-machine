@@ -2,6 +2,7 @@ package ru.impression.flow_architecture.impl
 
 import android.app.Application
 import android.arch.lifecycle.AndroidViewModel
+import ru.impression.flow_architecture.Event
 import ru.impression.flow_architecture.Flow
 import ru.impression.flow_architecture.FlowPerformer
 
@@ -12,7 +13,7 @@ abstract class FlowAndroidViewModel<F : Flow>(
 
     final override fun attachToFlow() = super.attachToFlow()
 
-    final override fun eventOccurred(event: Flow.Event) = super.eventOccurred(event)
+    final override fun eventOccurred(event: Event) = super.eventOccurred(event)
 
     final override fun detachFromFlow() = super.detachFromFlow()
 

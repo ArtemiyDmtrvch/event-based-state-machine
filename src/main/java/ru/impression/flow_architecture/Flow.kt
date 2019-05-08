@@ -102,15 +102,9 @@ abstract class Flow {
     protected fun performAction(action: Action) {
         val thisName = javaClass.notNullName
         ACTION_SUBJECTS[thisName]?.onNext(action)
-        if (action is InitiatingAction) {
+        if (action is FlowInitiatingAction) {
             FlowManager.startFlowIfNeeded(action.flowClass)
             ACTION_SUBJECTS[action.flowClass.notNullName]?.onNext(action)
         }
     }
-
-    abstract class Event
-
-    abstract class Action
-
-    abstract class InitiatingAction(val flowClass: Class<out Flow>) : Action()
 }
