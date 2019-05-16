@@ -9,6 +9,10 @@ import io.reactivex.schedulers.Schedulers
 
 abstract class Flow {
 
+    private val subscriptionScheduler = Schedulers.io()
+
+    private val observingScheduler = Schedulers.single()
+
     internal fun initRestoration(restorativeInitiatingAction: RestorativeInitiatingAction) {
         whenEventOccurs<RestorationRequested> { performAction(restorativeInitiatingAction) }
     }
