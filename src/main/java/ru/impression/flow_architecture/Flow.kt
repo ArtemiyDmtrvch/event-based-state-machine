@@ -6,7 +6,15 @@ import io.reactivex.functions.Function3
 import io.reactivex.functions.Function4
 import io.reactivex.schedulers.Schedulers
 
-abstract class Flow {
+abstract class Flow(private val restorativeInitiatingAction: RestorativeInitiatingAction?) {
+
+    constructor() : this(null)
+
+    init {
+        restorativeInitiatingAction?.let {
+            whenEventOccurs<RestorationRequested> { performAction(restorativeInitiatingAction) }
+        }
+    }
 
     protected inline fun <reified E : Event> whenEventOccurs(crossinline onEvent: (E) -> Unit) {
         val thisName = javaClass.notNullName
@@ -102,8 +110,8 @@ abstract class Flow {
     protected fun performAction(action: Action) {
         val thisName = javaClass.notNullName
         ACTION_SUBJECTS[thisName]?.onNext(action)
-        if (action is FlowInitiatingAction) {
-            FlowManager.startFlowIfNeeded(action.flowClass)
+        if (action is InitiatingAction) {
+            FlowManager.startFlowIfNeeded(action.flowClass, action)
             ACTION_SUBJECTS[action.flowClass.notNullName]?.onNext(action)
         }
     }

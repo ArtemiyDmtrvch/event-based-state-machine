@@ -1,11 +1,12 @@
-package ru.impression.flow_architecture.impl
+package ru.impression.flow_architecture
 
 import android.arch.lifecycle.ViewModel
-import ru.impression.flow_architecture.Event
-import ru.impression.flow_architecture.Flow
-import ru.impression.flow_architecture.FlowPerformer
 
-abstract class FlowViewModel<F : Flow>(final override val flowClass: Class<F>) : ViewModel(), FlowPerformer<F> {
+abstract class FlowViewModel<F : Flow>(final override val flowClass: Class<F>) : ViewModel(), IFlowViewModel<F> {
+
+    final override val savedViewSecondaryStates = HashMap<String, Any>()
+
+    final override var needToRestoreView: Boolean = false
 
     final override fun attachToFlow() = super.attachToFlow()
 

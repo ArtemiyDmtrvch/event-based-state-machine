@@ -7,14 +7,18 @@ import java.util.concurrent.ConcurrentHashMap
 
 internal object FlowManager {
 
-    fun startFlowIfNeeded(flowClass: Class<out Flow>) {
+    fun startFlowIfNeeded(flowClass: Class<out Flow>, initiatingAction: InitiatingAction? = null) {
         val flowName = flowClass.notNullName
         if (!FLOW_PERFORMER_DISPOSABLES.containsKey(flowName)) {
             FLOW_PERFORMER_DISPOSABLES[flowName] = ConcurrentHashMap()
             FLOW_DISPOSABLES[flowName] = CompositeDisposable()
             EVENT_SUBJECTS[flowName] = PublishSubject.create()
             ACTION_SUBJECTS[flowName] = ReplaySubject.createWithSize(1)
-            flowClass.newInstance()
+            if (initiatingAction is RestorativeInitiatingAction)
+                flowClass
+                    .getConstructor(RestorativeInitiatingAction::class.java)
+                    .newInstance(initiatingAction)
+            else flowClass.newInstance()
         }
     }
 

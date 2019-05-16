@@ -7,7 +7,7 @@ interface FlowPerformer<F : Flow> {
 
     val flowClass: Class<F>
 
-    val eventEnrichers: List<FlowPerformer<F>> get() = emptyList()
+    val eventEnrichers: Array<FlowPerformer<F>> get() = emptyArray()
 
     fun attachToFlow() {
         val flowName = flowClass.notNullName
