@@ -11,17 +11,17 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 
 abstract class FlowDialogFragment<F : Flow, S : Any>(
-    final override val flowClass: Class<F>,
-    final override val viewModelClass: Class<out ViewModel>? = null
+    override val flowClass: Class<F>,
+    override val viewModelClass: Class<out ViewModel>? = null
 ) : DialogFragment(), FlowView<F, S> {
 
-    final override var viewModel: IFlowViewModel<F>? = null
+    override var viewModel: IFlowViewModel<F>? = null
 
-    final override fun attachToFlow() = super.attachToFlow()
-
-    final override fun eventOccurred(event: Event) = super.eventOccurred(event)
-
-    final override fun detachFromFlow() = super.detachFromFlow()
+    override var initialStateIsSet: Boolean = super.initialStateIsSet
+        set(value) {
+            field = value
+            super.initialStateIsSet = value
+        }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
         FrameLayout(activity!!)
@@ -36,15 +36,16 @@ abstract class FlowDialogFragment<F : Flow, S : Any>(
         setView(View.inflate(activity!!, layoutResId, null))
 
     protected open fun setView(view: View) {
-        (view as ViewGroup).apply {
-            removeAllViews()
-            addView(view)
+        this.view.apply {
+            if (this is ViewGroup) {
+                removeAllViews()
+                addView(view)
+            }
         }
-        restoreSecondaryState()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
-        saveSecondaryState()
+        saveAcquiredState()
         super.onConfigurationChanged(newConfig)
     }
 

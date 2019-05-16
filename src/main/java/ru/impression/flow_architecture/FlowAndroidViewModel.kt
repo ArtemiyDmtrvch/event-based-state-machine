@@ -5,18 +5,14 @@ import android.arch.lifecycle.AndroidViewModel
 
 abstract class FlowAndroidViewModel<F : Flow>(
     application: Application,
-    final override val flowClass: Class<F>
+    override val flowClass: Class<F>
 ) : AndroidViewModel(application), IFlowViewModel<F> {
 
-    final override val savedViewSecondaryStates = HashMap<String, Any>()
+    override val savedViewAcquiredStates = HashMap<String, Any>()
 
-    final override var needToRestoreView: Boolean = false
+    override var needToRestoreView: Boolean = false
 
     final override fun attachToFlow() = super.attachToFlow()
-
-    final override fun eventOccurred(event: Event) = super.eventOccurred(event)
-
-    final override fun detachFromFlow() = super.detachFromFlow()
 
     init {
         attachToFlow()

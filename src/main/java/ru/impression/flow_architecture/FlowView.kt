@@ -9,13 +9,13 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
 
     var viewModel: IFlowViewModel<F>?
 
-    var primaryStateIsSet: Boolean
+    var initialStateIsSet: Boolean
         get() = false
         set(value) {
-            if (value) restoreSecondaryState()
+            if (value) restoreAcquiredState()
         }
 
-    var secondaryState: S
+    var acquiredState: S
 
     fun init(viewModelProvider: ViewModelProvider) = viewModelClass?.let { clazz ->
         viewModelProvider[clazz].let {
@@ -28,12 +28,12 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
         }
     }
 
-    fun saveSecondaryState() {
-        viewModel?.savedViewSecondaryStates?.put(javaClass.notNullName, secondaryState)
+    fun saveAcquiredState() {
+        viewModel?.savedViewAcquiredStates?.put(javaClass.notNullName, acquiredState)
     }
 
-    fun restoreSecondaryState() {
-        viewModel?.savedViewSecondaryStates?.remove(javaClass.notNullName)?.let { secondaryState = it as S }
+    fun restoreAcquiredState() {
+        viewModel?.savedViewAcquiredStates?.remove(javaClass.notNullName)?.let { acquiredState = it as S }
     }
 
     override fun detachFromFlow() {

@@ -17,10 +17,10 @@ abstract class FlowFragment<F : Flow, S : Any>(
 
     override var viewModel: IFlowViewModel<F>? = null
 
-    override var primaryStateIsSet: Boolean = false
+    override var initialStateIsSet: Boolean = super.initialStateIsSet
         set(value) {
             field = value
-            super.primaryStateIsSet = value
+            super.initialStateIsSet = value
         }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
@@ -36,15 +36,16 @@ abstract class FlowFragment<F : Flow, S : Any>(
         setView(View.inflate(activity!!, layoutResId, null))
 
     protected open fun setView(view: View) {
-        if (view is ViewGroup) view.apply {
-            removeAllViews()
-            addView(view)
+        this.view.apply {
+            if (this is ViewGroup) {
+                removeAllViews()
+                addView(view)
+            }
         }
-        restoreSecondaryState()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
-        saveSecondaryState()
+        saveAcquiredState()
         super.onConfigurationChanged(newConfig)
     }
 
