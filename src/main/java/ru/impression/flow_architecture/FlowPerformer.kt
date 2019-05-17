@@ -25,20 +25,22 @@ interface FlowPerformer<F : Flow> {
         }
 
     fun attachToFlow() {
+        val thisName = javaClass.notNullName
         (flowHashCode
             ?.let { getFlow(it) }
             ?: WAITING_FLOWS.firstOrNull { it.javaClass == flowClass }?.also {
                 WAITING_FLOWS.remove(it)
                 FLOWS.add(it)
             }
-            ?: FlowManager.startFlow(flowClass).also { flowHashCode = it.hashCode() })
+            ?: FlowManager.startFlow(flowClass))
+            .also { flowHashCode = it.hashCode() }
             .apply {
-                performerDisposables.remove(javaClass.notNullName)?.dispose()
+                performerDisposables.remove(thisName)?.dispose()
                 actionSubject
                     .subscribeOn(Schedulers.newThread())
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe({ performAction(it) }) { throw it }
-                    .let { performerDisposables.put(javaClass.notNullName, it) }
+                    .let { performerDisposables.put(thisName, it) }
             }
     }
 
