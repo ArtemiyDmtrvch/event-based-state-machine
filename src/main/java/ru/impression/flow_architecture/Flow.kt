@@ -5,29 +5,37 @@ import io.reactivex.functions.BiFunction
 import io.reactivex.functions.Function3
 import io.reactivex.functions.Function4
 import io.reactivex.schedulers.Schedulers
+import java.util.concurrent.ConcurrentHashMap
 
 
 abstract class Flow {
 
-    private val subscriptionScheduler = Schedulers.io()
+    @PublishedApi
+    internal val subscriptionScheduler = Schedulers.io()
 
-    private val observingScheduler = Schedulers.single()
+    @PublishedApi
+    internal val observingScheduler = Schedulers.single()
+
+    @PublishedApi
+    internal val onEvents: ConcurrentHashMap<String, (Event) -> Unit> = ConcurrentHashMap()
+
+    init {
+        val thisName = javaClass.notNullName
+        EVENT_SUBJECTS[thisName]?.let { eventSubject ->
+            eventSubject
+                .subscribeOn(subscriptionScheduler)
+                .observeOn(observingScheduler)
+                .subscribe({ event -> onEvents[event::class.java.notNullName]?.invoke(event) }) { throw  it }
+                .let { disposable -> FLOW_DISPOSABLES[thisName]?.add(disposable) }
+        }
+    }
 
     internal fun initRestoration(restorativeInitiatingAction: RestorativeInitiatingAction) {
         whenEventOccurs<RestorationRequested> { performAction(restorativeInitiatingAction) }
     }
 
     protected inline fun <reified E : Event> whenEventOccurs(crossinline onEvent: (E) -> Unit) {
-        val thisName = javaClass.notNullName
-        EVENT_SUBJECTS[thisName]?.let { eventSubject ->
-            eventSubject
-                .filter { it is E }
-                .map { it as E }
-                .subscribeOn(Schedulers.newThread())
-                .observeOn(Schedulers.newThread())
-                .subscribe({ event -> onEvent(event) }) { throw  it }
-                .let { disposable -> FLOW_DISPOSABLES[thisName]?.add(disposable) }
-        }
+        onEvents[E::class.java.notNullName] = { onEvent(it as E) }
     }
 
     protected inline fun <reified E1 : Event, reified E2 : Event> whenSeriesOfEventsOccur(
@@ -45,8 +53,8 @@ abstract class Flow {
                         .map { it as E2 },
                     BiFunction<E1, E2, Unit> { e1, e2 -> onSeriesOfEvents(e1, e2) }
                 )
-                .subscribeOn(Schedulers.newThread())
-                .observeOn(Schedulers.newThread())
+                .subscribeOn(subscriptionScheduler)
+                .observeOn(observingScheduler)
                 .doOnError { throw it }
                 .subscribe()
                 .let { disposable -> FLOW_DISPOSABLES[thisName]?.add(disposable) }
@@ -71,8 +79,8 @@ abstract class Flow {
                         .map { it as E3 },
                     Function3<E1, E2, E3, Unit> { e1, e2, e3 -> onSeriesOfEvents(e1, e2, e3) }
                 )
-                .subscribeOn(Schedulers.newThread())
-                .observeOn(Schedulers.newThread())
+                .subscribeOn(subscriptionScheduler)
+                .observeOn(observingScheduler)
                 .doOnError { throw it }
                 .subscribe()
                 .let { disposable -> FLOW_DISPOSABLES[thisName]?.add(disposable) }
@@ -100,8 +108,8 @@ abstract class Flow {
                         .map { it as E4 },
                     Function4<E1, E2, E3, E4, Unit> { e1, e2, e3, e4 -> onSeriesOfEvents(e1, e2, e3, e4) }
                 )
-                .subscribeOn(Schedulers.newThread())
-                .observeOn(Schedulers.newThread())
+                .subscribeOn(subscriptionScheduler)
+                .observeOn(observingScheduler)
                 .doOnError { throw it }
                 .subscribe()
                 .let { disposable -> FLOW_DISPOSABLES[thisName]?.add(disposable) }
