@@ -23,15 +23,12 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
             super.isActive = value
         }
 
-    fun initWithViewModel(viewModelProvider: ViewModelProvider) = viewModelClass?.let { clazz ->
-        viewModelProvider[clazz].let {
-            if (it is IFlowViewModel<*>) viewModel = (it as IFlowViewModel<F>).also {
-                if (it.needToRestoreView) {
-                    eventOccurred(RestorationRequested())
-                    it.needToRestoreView = false
-                }
-            }
+    fun init(viewModelProvider: ViewModelProvider) {
+        viewModelClass?.let { clazz ->
+            viewModel = (viewModelProvider[clazz] as IFlowViewModel<F>).also { flowHashCode = it.flowHashCode }
         }
+        attachToFlow()
+        viewModel?.init(flowHashCode!!)
     }
 
     fun initialStateIsSet() {

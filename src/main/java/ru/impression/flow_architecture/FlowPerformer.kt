@@ -8,36 +8,39 @@ interface FlowPerformer<F : Flow> {
 
     val flowClass: Class<F>
 
+    var flowHashCode: Int?
+
     val eventEnrichers: Array<FlowPerformer<F>> get() = emptyArray()
 
     var isActive: Boolean
         get() = false
         set(value) {
-            if (value)
-                MISSED_ACTIONS[flowClass.notNullName]?.remove(javaClass.notNullName)?.forEach { performAction(it) }
-            else
-                MISSED_ACTIONS[flowClass.notNullName]?.put(javaClass.notNullName, ConcurrentLinkedQueue())
-
+            getFlow(flowHashCode!!)?.apply {
+                if (value)
+                    missedActions.remove(hashCode())?.forEach { performAction(it) }
+                else
+                    missedActions[hashCode()] = ConcurrentLinkedQueue()
+            }
         }
 
     fun attachToFlow() {
-        val flowName = flowClass.notNullName
-        val thisName = javaClass.notNullName
-        FLOW_PERFORMER_DISPOSABLES[flowName]?.get(thisName)?.dispose()
-        FlowManager.startFlowIfNeeded(flowClass)
-        ACTION_SUBJECTS[flowName]?.let { actionSubject ->
-            actionSubject
-                .subscribeOn(Schedulers.newThread())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ performAction(it) }) { throw it }
-                .let { FLOW_PERFORMER_DISPOSABLES[flowName]?.put(thisName, it) }
-        }
+        (flowHashCode
+            ?.let { getFlow(it) }
+            ?: WAITING_FLOWS.firstOrNull { it.javaClass == flowClass }?.also { WAITING_FLOWS.remove(it) }
+            ?: FlowManager.startFlow(flowClass).also { flowHashCode = it.hashCode() })
+            .apply {
+                performerDisposables.remove(javaClass.notNullName)?.dispose()
+                actionSubject
+                    .subscribeOn(Schedulers.newThread())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe({ performAction(it) }) { throw it }
+                    .let { performerDisposables.put(javaClass.notNullName, it) }
+            }
     }
 
     fun eventOccurred(event: Event) {
-        val flowName = flowClass.notNullName
         eventEnrichers.forEach { it.enrichEvent(event) }
-        EVENT_SUBJECTS[flowName]?.onNext(event)
+        getFlow(flowHashCode!!)?.eventSubject?.onNext(event)
     }
 
     fun enrichEvent(event: Event) = Unit
@@ -45,9 +48,12 @@ interface FlowPerformer<F : Flow> {
     fun performAction(action: Action) = Unit
 
     fun detachFromFlow() {
-        val flowName = flowClass.notNullName
-        val thisName = javaClass.notNullName
-        FLOW_PERFORMER_DISPOSABLES[flowName]?.remove(thisName)?.dispose()
-        FlowManager.stopFlowIfNeeded(flowClass)
+        getFlow(flowHashCode!!)
+            ?.apply {
+                performerDisposables.remove(javaClass.notNullName)?.dispose()
+            }
+            ?.also {
+                FlowManager.stopFlowIfNeeded(it)
+            }
     }
 }

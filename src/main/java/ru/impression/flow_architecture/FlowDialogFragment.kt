@@ -15,6 +15,8 @@ abstract class FlowDialogFragment<F : Flow, S : Any>(
     override val viewModelClass: Class<out ViewModel>? = null
 ) : DialogFragment(), FlowView<F, S> {
 
+    override var flowHashCode: Int? = null
+
     override var viewModel: IFlowViewModel<F>? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
@@ -22,8 +24,7 @@ abstract class FlowDialogFragment<F : Flow, S : Any>(
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        initWithViewModel(ViewModelProviders.of(this))
-        attachToFlow()
+        init(ViewModelProviders.of(this))
     }
 
     protected fun setView(layoutResId: Int) =
