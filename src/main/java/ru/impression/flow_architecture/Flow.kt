@@ -42,7 +42,7 @@ abstract class Flow {
 
     internal val actionSubject = ReplaySubject.createWithSize<Action>(1)
 
-    internal val missedActions: ConcurrentHashMap<Int, ConcurrentLinkedQueue<Action>> = ConcurrentHashMap()
+    internal val missedActions: ConcurrentHashMap<String, ConcurrentLinkedQueue<Action>> = ConcurrentHashMap()
 
     internal fun initRestoration(restorativeInitiatingAction: RestorativeInitiatingAction) {
         whenEventOccurs<RestorationRequested> { performAction(restorativeInitiatingAction) }

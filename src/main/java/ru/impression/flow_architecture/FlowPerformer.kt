@@ -16,17 +16,21 @@ interface FlowPerformer<F : Flow> {
         get() = false
         set(value) {
             getFlow(flowHashCode!!)?.apply {
+                val thisName = javaClass.notNullName
                 if (value)
-                    missedActions.remove(hashCode())?.forEach { performAction(it) }
+                    missedActions.remove(thisName)?.forEach { performAction(it) }
                 else
-                    missedActions[hashCode()] = ConcurrentLinkedQueue()
+                    missedActions[thisName] = ConcurrentLinkedQueue()
             }
         }
 
     fun attachToFlow() {
         (flowHashCode
             ?.let { getFlow(it) }
-            ?: WAITING_FLOWS.firstOrNull { it.javaClass == flowClass }?.also { WAITING_FLOWS.remove(it) }
+            ?: WAITING_FLOWS.firstOrNull { it.javaClass == flowClass }?.also {
+                WAITING_FLOWS.remove(it)
+                FLOWS.add(it)
+            }
             ?: FlowManager.startFlow(flowClass).also { flowHashCode = it.hashCode() })
             .apply {
                 performerDisposables.remove(javaClass.notNullName)?.dispose()
