@@ -10,6 +10,16 @@ interface FlowPerformer<F : Flow> {
 
     val eventEnrichers: Array<FlowPerformer<F>> get() = emptyArray()
 
+    var isActive: Boolean
+        get() = false
+        set(value) {
+            if (value)
+                MISSED_ACTIONS[flowClass.notNullName]?.remove(javaClass.notNullName)?.forEach { performAction(it) }
+            else
+                MISSED_ACTIONS[flowClass.notNullName]?.put(javaClass.notNullName, ConcurrentLinkedQueue())
+
+        }
+
     fun attachToFlow() {
         val flowName = flowClass.notNullName
         val thisName = javaClass.notNullName
@@ -33,18 +43,6 @@ interface FlowPerformer<F : Flow> {
     fun enrichEvent(event: Event) = Unit
 
     fun performAction(action: Action) = Unit
-
-    fun onBecomingInactive() {
-        val flowName = flowClass.notNullName
-        val thisName = javaClass.notNullName
-        MISSED_ACTIONS[flowName]?.put(thisName, ConcurrentLinkedQueue())
-    }
-
-    fun onBecomingActive() {
-        val flowName = flowClass.notNullName
-        val thisName = javaClass.notNullName
-        MISSED_ACTIONS[flowName]?.remove(thisName)?.forEach { performAction(it) }
-    }
 
     fun detachFromFlow() {
         val flowName = flowClass.notNullName

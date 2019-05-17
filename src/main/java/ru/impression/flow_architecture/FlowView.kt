@@ -11,6 +11,18 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
 
     var acquiredState: S
 
+    override var isActive: Boolean
+        get() = super.isActive
+        set(value) {
+            if (value)
+                viewModel?.savedViewAcquiredStates?.remove(javaClass.notNullName)?.let { acquiredState = it as S }
+            else
+                acquiredState.takeIf { it !is Unit && it !is Nothing }?.let {
+                    viewModel?.savedViewAcquiredStates?.put(javaClass.notNullName, it)
+                }
+            super.isActive = value
+        }
+
     fun initWithViewModel(viewModelProvider: ViewModelProvider) = viewModelClass?.let { clazz ->
         viewModelProvider[clazz].let {
             if (it is IFlowViewModel<*>) viewModel = (it as IFlowViewModel<F>).also {
@@ -23,19 +35,11 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
     }
 
     fun initialStateIsSet() {
-        onBecomingActive()
+        isActive = true
     }
 
-    override fun onBecomingActive() {
-        viewModel?.savedViewAcquiredStates?.remove(javaClass.notNullName)?.let { acquiredState = it as S }
-        super.onBecomingActive()
-    }
-
-    override fun onBecomingInactive() {
-        acquiredState.takeIf { it !is Unit && it !is Nothing }?.let {
-            viewModel?.savedViewAcquiredStates?.put(javaClass.notNullName, it)
-        }
-        super.onBecomingInactive()
+    override fun performAction(action: Action) {
+        if (!isActive && action !is InitiatingAction) return
     }
 
     override fun detachFromFlow() {

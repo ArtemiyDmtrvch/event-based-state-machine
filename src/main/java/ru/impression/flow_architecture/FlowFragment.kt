@@ -39,7 +39,7 @@ abstract class FlowFragment<F : Flow, S : Any>(
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
-        onBecomingInactive()
+        isActive = false
         super.onConfigurationChanged(newConfig)
     }
 
