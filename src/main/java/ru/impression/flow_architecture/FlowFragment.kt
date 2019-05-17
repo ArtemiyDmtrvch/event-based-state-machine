@@ -17,18 +17,12 @@ abstract class FlowFragment<F : Flow, S : Any>(
 
     override var viewModel: IFlowViewModel<F>? = null
 
-    override var initialStateIsSet: Boolean = super.initialStateIsSet
-        set(value) {
-            field = value
-            super.initialStateIsSet = value
-        }
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
         FrameLayout(activity!!)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        init(ViewModelProviders.of(this))
+        initWithViewModel(ViewModelProviders.of(this))
         attachToFlow()
     }
 
@@ -45,7 +39,7 @@ abstract class FlowFragment<F : Flow, S : Any>(
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
-        saveAcquiredState()
+        onBecomingInactive()
         super.onConfigurationChanged(newConfig)
     }
 

@@ -17,6 +17,7 @@ internal object FlowManager {
             FLOW_DISPOSABLES[flowName] = CompositeDisposable()
             EVENT_SUBJECTS[flowName] = PublishSubject.create()
             ACTION_SUBJECTS[flowName] = ReplaySubject.createWithSize(1)
+            MISSED_ACTIONS[flowName] = ConcurrentHashMap()
             flowClass.newInstance().apply {
                 restorativeInitiatingAction?.let { initRestoration(it) }
             }
@@ -30,6 +31,7 @@ internal object FlowManager {
             FLOW_DISPOSABLES.remove(flowName)?.dispose()
             EVENT_SUBJECTS.remove(flowName)
             ACTION_SUBJECTS.remove(flowName)
+            MISSED_ACTIONS.remove(flowName)
         }
     }
 }

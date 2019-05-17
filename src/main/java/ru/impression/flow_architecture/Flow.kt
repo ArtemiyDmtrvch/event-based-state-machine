@@ -8,7 +8,7 @@ import io.reactivex.schedulers.Schedulers
 import java.util.concurrent.ConcurrentHashMap
 
 
-abstract class Flow {
+abstract class Flow @JvmOverloads constructor(@PublishedApi internal val parentFlowClassName: String? = null) {
 
     @PublishedApi
     internal val subscriptionScheduler = Schedulers.io()
@@ -35,7 +35,10 @@ abstract class Flow {
     }
 
     protected inline fun <reified E : Event> whenEventOccurs(crossinline onEvent: (E) -> Unit) {
-        onEvents[E::class.java.notNullName] = { onEvent(it as E) }
+        onEvents[E::class.java.notNullName] = {
+            onEvent(it as E)
+            if (it is ResultingEvent && parentFlowClassName != null) EVENT_SUBJECTS[parentFlowClassName]?.onNext(it)
+        }
     }
 
     protected inline fun <reified E1 : Event, reified E2 : Event> whenSeriesOfEventsOccur(
@@ -119,8 +122,12 @@ abstract class Flow {
     protected fun performAction(action: Action) {
         val thisName = javaClass.notNullName
         ACTION_SUBJECTS[thisName]?.onNext(action)
+        MISSED_ACTIONS[thisName]?.forEach { it.value.add(action) }
         if (action is InitiatingAction) {
-            FlowManager.startFlowIfNeeded(action.flowClass, if (action is RestorativeInitiatingAction) action else null)
+            FlowManager.startFlowIfNeeded(
+                action.flowClass,
+                if (action is RestorativeInitiatingAction) action else null
+            )
             ACTION_SUBJECTS[action.flowClass.notNullName]?.onNext(action)
         }
     }

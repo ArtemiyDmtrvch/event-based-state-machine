@@ -13,20 +13,14 @@ abstract class FlowActivity<F : Flow, S : Any>(
 
     final override var viewModel: IFlowViewModel<F>? = null
 
-    override var initialStateIsSet: Boolean = super.initialStateIsSet
-        set(value) {
-            field = value
-            super.initialStateIsSet = value
-        }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        init(ViewModelProviders.of(this))
+        initWithViewModel(ViewModelProviders.of(this))
         attachToFlow()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
-        saveAcquiredState()
+        onBecomingInactive()
         super.onConfigurationChanged(newConfig)
     }
 

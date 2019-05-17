@@ -2,6 +2,7 @@ package ru.impression.flow_architecture
 
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
+import java.util.concurrent.ConcurrentLinkedQueue
 
 interface FlowPerformer<F : Flow> {
 
@@ -32,6 +33,18 @@ interface FlowPerformer<F : Flow> {
     fun enrichEvent(event: Event) = Unit
 
     fun performAction(action: Action) = Unit
+
+    fun onBecomingInactive() {
+        val flowName = flowClass.notNullName
+        val thisName = javaClass.notNullName
+        MISSED_ACTIONS[flowName]?.put(thisName, ConcurrentLinkedQueue())
+    }
+
+    fun onBecomingActive() {
+        val flowName = flowClass.notNullName
+        val thisName = javaClass.notNullName
+        MISSED_ACTIONS[flowName]?.remove(thisName)?.forEach { performAction(it) }
+    }
 
     fun detachFromFlow() {
         val flowName = flowClass.notNullName

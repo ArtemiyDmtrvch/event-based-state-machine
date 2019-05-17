@@ -9,15 +9,9 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
 
     var viewModel: IFlowViewModel<F>?
 
-    var initialStateIsSet: Boolean
-        get() = false
-        set(value) {
-            if (value) restoreAcquiredState()
-        }
-
     var acquiredState: S
 
-    fun init(viewModelProvider: ViewModelProvider) = viewModelClass?.let { clazz ->
+    fun initWithViewModel(viewModelProvider: ViewModelProvider) = viewModelClass?.let { clazz ->
         viewModelProvider[clazz].let {
             if (it is IFlowViewModel<*>) viewModel = (it as IFlowViewModel<F>).also {
                 if (it.needToRestoreView) {
@@ -28,12 +22,20 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
         }
     }
 
-    fun saveAcquiredState() {
-        viewModel?.savedViewAcquiredStates?.put(javaClass.notNullName, acquiredState)
+    fun initialStateIsSet() {
+        onBecomingActive()
     }
 
-    fun restoreAcquiredState() {
+    override fun onBecomingActive() {
         viewModel?.savedViewAcquiredStates?.remove(javaClass.notNullName)?.let { acquiredState = it as S }
+        super.onBecomingActive()
+    }
+
+    override fun onBecomingInactive() {
+        acquiredState.takeIf { it !is Unit && it !is Nothing }?.let {
+            viewModel?.savedViewAcquiredStates?.put(javaClass.notNullName, it)
+        }
+        super.onBecomingInactive()
     }
 
     override fun detachFromFlow() {
