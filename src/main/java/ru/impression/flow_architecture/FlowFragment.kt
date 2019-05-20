@@ -1,7 +1,6 @@
 package ru.impression.flow_architecture
 
 import android.arch.lifecycle.ViewModel
-import android.arch.lifecycle.ViewModelProviders
 import android.content.res.Configuration
 import android.os.Bundle
 import android.support.v4.app.Fragment
@@ -12,19 +11,19 @@ import android.widget.FrameLayout
 
 abstract class FlowFragment<F : Flow, S : Any>(
     override val flowClass: Class<F>,
-    override val viewModelClass: Class<out ViewModel>? = null
+    override val flowViewModelClass: Class<out ViewModel>? = null
 ) : Fragment(), FlowView<F, S> {
 
-    override var flowHashCode: Int? = null
+    override var flow: Flow? = null
 
-    override var viewModel: IFlowViewModel<F>? = null
+    override var flowViewModel: IFlowViewModel<F>? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
         FrameLayout(activity!!)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        init(ViewModelProviders.of(this))
+        attachToFlow()
     }
 
     protected fun setView(layoutResId: Int) =

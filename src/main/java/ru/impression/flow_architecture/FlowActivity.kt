@@ -8,16 +8,16 @@ import android.support.v7.app.AppCompatActivity
 
 abstract class FlowActivity<F : Flow, S : Any>(
     override val flowClass: Class<F>,
-    override val viewModelClass: Class<out ViewModel>? = null
+    override val flowViewModelClass: Class<out ViewModel>? = null
 ) : AppCompatActivity(), FlowView<F, S> {
 
-    override var flowHashCode: Int? = null
+    override var flow: Flow? = null
 
-    override var viewModel: IFlowViewModel<F>? = null
+    override var flowViewModel: IFlowViewModel<F>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        init(ViewModelProviders.of(this))
+        attachToFlow()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
