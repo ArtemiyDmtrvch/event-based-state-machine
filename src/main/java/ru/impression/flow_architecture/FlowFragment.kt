@@ -38,7 +38,7 @@ abstract class FlowFragment<F : Flow, S : Any>(override val flowClass: Class<F>)
     }
 
     override fun onDestroyView() {
-        detachFromFlow(activity!!.isChangingConfigurations)
+        detachFromFlow()
         super.onDestroyView()
     }
 }

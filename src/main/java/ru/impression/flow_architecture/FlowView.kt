@@ -24,11 +24,10 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
         performCachedActions()
     }
 
-    override fun detachFromFlow(cacheActions: Boolean) {
-        super.detachFromFlow(cacheActions)
-        if (cacheActions)
-            additionalState
-                .takeIf { it !is Unit && it !is Nothing }
-                ?.let { flowHost.savedViewAdditionalStates.put(javaClass.notNullName, it) }
+    fun detachFromFlowForAWhile() {
+        detachFromFlow(true)
+        additionalState
+            .takeIf { it !is Unit && it !is Nothing }
+            ?.let { flowHost.savedViewAdditionalStates.put(javaClass.notNullName, it) }
     }
 }

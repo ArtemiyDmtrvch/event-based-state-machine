@@ -4,7 +4,7 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import java.util.concurrent.ConcurrentLinkedQueue
 
-interface FlowPerformer<F : Flow>{
+interface FlowPerformer<F : Flow> {
 
     val flowHost: FlowHost<F>
 
@@ -15,12 +15,12 @@ interface FlowPerformer<F : Flow>{
     fun attachToFlow(attachmentType: AttachmentType) {
         val thisName = javaClass.notNullName
         if (flowHost.flow.performerDisposables.containsKey(thisName)) return
-        if (attachmentType == AttachmentType.REPLAY_ATTACHMENT) flowHost.flow.replay()
-        flowHost.flow.performerDisposables.remove(thisName)?.dispose()
+        if (attachmentType == AttachmentType.REPLAY_ATTACHMENT) flowHost.flow.actionSubject.cleanupBuffer()
         flowHost.flow.performerDisposables[thisName] = flowHost.flow.actionSubject
             .subscribeOn(Schedulers.single())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({ performAction(it) }) { throw  it }
+        if (attachmentType == AttachmentType.REPLAY_ATTACHMENT) flowHost.flow.replay()
     }
 
     fun eventOccurred(event: Event) {

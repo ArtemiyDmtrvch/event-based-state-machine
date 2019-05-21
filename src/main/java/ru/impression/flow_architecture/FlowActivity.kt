@@ -19,7 +19,7 @@ abstract class FlowActivity<F : Flow, S : Any>(override val flowClass: Class<F>)
     }
 
     override fun onDestroy() {
-        detachFromFlow(isChangingConfigurations)
+        detachFromFlow()
         super.onDestroy()
     }
 }
