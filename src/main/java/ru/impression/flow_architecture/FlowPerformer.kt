@@ -20,6 +20,7 @@ interface FlowPerformer<F : Flow> {
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({ performAction(it) }) { throw  it }
         flowHost.flow.temporarilyDetachedPerformers.remove(thisName)
+        flowHost.flow.onPerformerAttached()
     }
 
     fun eventOccurred(event: Event) {
@@ -41,5 +42,10 @@ interface FlowPerformer<F : Flow> {
         if (!flowHost.flow.performerDisposables.containsKey(thisName)) return
         flowHost.flow.performerDisposables.remove(thisName)?.dispose()
         flowHost.flow.onPerformerDetached()
+    }
+
+    enum class AttachmentType {
+        NORMAL_ATTACHMENT,
+        REPLAY_ATTACHMENT
     }
 }

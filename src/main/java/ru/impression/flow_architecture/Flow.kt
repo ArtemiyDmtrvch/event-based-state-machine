@@ -38,10 +38,22 @@ abstract class Flow {
 
     internal val temporarilyDetachedPerformers = ConcurrentLinkedQueue<String>()
 
+    @PublishedApi
+    internal val pendingResultingEvents = ConcurrentLinkedQueue<ResultingEvent>()
+
+    @PublishedApi
+    internal val performingMode
+        get() = if (temporarilyDetachedPerformers.isEmpty()) PerformingMode.FULL else PerformingMode.PARTIAL
+
     protected inline fun <reified E : Event> whenEventOccurs(crossinline onEvent: (E) -> Unit) {
-        onEvents[E::class.java.notNullName] = {
-            onEvent(it as E)
-            if (it is ResultingEvent) parentFlow?.eventOccurred(it)
+        onEvents[E::class.java.notNullName] = { event ->
+            onEvent(event as E)
+            if (event is ResultingEvent) parentFlow?.let { parentFlow ->
+                if (parentFlow.performingMode == PerformingMode.FULL)
+                    parentFlow.eventOccurred(event)
+                else
+                    parentFlow.pendingResultingEvents.add(event)
+            }
         }
     }
 
@@ -114,6 +126,13 @@ abstract class Flow {
             .let { disposable -> disposables.add(disposable) }
     }
 
+    internal fun onPerformerAttached() {
+        if (performingMode == PerformingMode.FULL) pendingResultingEvents.forEach {
+            eventOccurred(it)
+            pendingResultingEvents.remove(it)
+        }
+    }
+
     @PublishedApi
     internal fun eventOccurred(event: Event) {
         onEvents[event.javaClass.notNullName]?.invoke(event)
@@ -124,6 +143,7 @@ abstract class Flow {
         actionSubject.onNext(action)
         if (action is InitiatingAction && action.flowClass != javaClass) {
             action.flowClass.newInstance()
+                .also { it.parentFlow = this }
                 .apply {
                     if (action is ReplayableInitiatingAction) replayableInitiatingAction = action
                     performAction(action)
@@ -139,5 +159,11 @@ abstract class Flow {
             onEvents.clear()
             disposables.dispose()
         }
+    }
+
+    @PublishedApi
+    internal enum class PerformingMode {
+        FULL,
+        PARTIAL
     }
 }
