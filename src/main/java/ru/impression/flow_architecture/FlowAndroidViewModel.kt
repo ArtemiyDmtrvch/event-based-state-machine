@@ -10,7 +10,7 @@ abstract class FlowAndroidViewModel<F : Flow>(
 
     override var flow: Flow? = null
 
-    override val savedViewAcquiredStates = HashMap<String, Any>()
+    override val savedViewAdditionalStates = HashMap<String, Any>()
 
     final override fun attachToFlow() = super.attachToFlow()
 

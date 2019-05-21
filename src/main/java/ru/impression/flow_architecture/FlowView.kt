@@ -11,39 +11,37 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
 
     var flowViewModel: IFlowViewModel<F>?
 
-    var acquiredState: S
-
-    override var isActive: Boolean
-        get() = super.isActive
-        set(value) {
-            if (value)
-                flowViewModel?.savedViewAcquiredStates?.remove(javaClass.notNullName)?.let { acquiredState = it as S }
-            else
-                acquiredState.takeIf { it !is Unit && it !is Nothing }?.let {
-                    flowViewModel?.savedViewAcquiredStates?.put(javaClass.notNullName, it)
-                }
-            super.isActive = value
-        }
+    var additionalState: S
 
     override fun attachToFlow() {
-        flowViewModelClass
-            ?.let { clazz ->
-                val viewModelProvider = when (this) {
-                    is Fragment -> ViewModelProviders.of(this)
-                    is FragmentActivity -> ViewModelProviders.of(this)
-                    else -> null
-                }
-                viewModelProvider?.get(clazz)
-            }
-            ?.let { if (it is IFlowViewModel<*>) flowViewModel = (it as IFlowViewModel<F>) }
-        super.attachToFlow(flowViewModel, AttachMode.REPLAY)
+        val viewModelProvider = when (this) {
+            is Fragment -> ViewModelProviders.of(this)
+            is FragmentActivity -> ViewModelProviders.of(this)
+            else -> null
+        }
+        val flowHostViewModel = viewModelProvider?.get(FlowViewModel::class.java)
+        initFlow(flowViewModel)
+        super.attachToFlow(
+            flowViewModel ?: this,
+            if (flow?.cachedActions?.containsKey(javaClass.notNullName) == true)
+                AttachmentType.REPLAY_ATTACHMENT
+            else
+                AttachmentType.NORMAL_ATTACHMENT
+        )
     }
 
-    fun initialStateIsSet() {
-        isActive = true
+    fun groundStateIsSet() {
+        flowViewModel?.savedViewAdditionalStates
+            ?.remove(javaClass.notNullName)
+            ?.let { additionalState = it as S }
+        performCachedActions()
     }
 
-    override fun performAction(action: Action) {
-        if (!isActive && action !is InitiatingAction) return
+    override fun detachFromFlow(cacheActions: Boolean) {
+        if (cacheActions)
+            additionalState
+                .takeIf { it !is Unit && it !is Nothing }
+                ?.let { flowViewModel?.savedViewAdditionalStates?.put(javaClass.notNullName, it) }
+        super.detachFromFlow(cacheActions)
     }
 }

@@ -1,7 +1,6 @@
 package ru.impression.flow_architecture
 
 import android.arch.lifecycle.ViewModel
-import android.arch.lifecycle.ViewModelProviders
 import android.content.res.Configuration
 import android.os.Bundle
 import android.support.v4.app.DialogFragment
@@ -39,13 +38,8 @@ abstract class FlowDialogFragment<F : Flow, S : Any>(
         }
     }
 
-    override fun onConfigurationChanged(newConfig: Configuration) {
-        isActive = false
-        super.onConfigurationChanged(newConfig)
-    }
-
     override fun onDestroyView() {
-        detachFromFlow()
+        detachFromFlow(activity!!.isChangingConfigurations)
         super.onDestroyView()
     }
 }

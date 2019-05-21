@@ -38,13 +38,8 @@ abstract class FlowFragment<F : Flow, S : Any>(
         }
     }
 
-    override fun onConfigurationChanged(newConfig: Configuration) {
-        isActive = false
-        super.onConfigurationChanged(newConfig)
-    }
-
     override fun onDestroyView() {
-        detachFromFlow()
+        detachFromFlow(activity!!.isChangingConfigurations)
         super.onDestroyView()
     }
 }

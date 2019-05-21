@@ -1,32 +1,32 @@
 package ru.impression.flow_architecture
 
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.schedulers.Schedulers
 import java.util.concurrent.ConcurrentLinkedQueue
 
-interface FlowPerformer<F : Flow> {
+interface FlowPerformer<F : Flow> : FlowHost {
 
     val flowClass: Class<F>
 
-    var flow: Flow?
+    val flowHost: FlowHost
 
     val eventEnrichers: Array<FlowPerformer<F>> get() = emptyArray()
 
-    var isActive
-        get() = false
-        set(value) {
-            flow?.let { flow ->
-                if (value)
-                    flow.missedActions.remove(javaClass.notNullName)?.forEach { performAction(it) }
-                else
-                    flow.missedActions[javaClass.notNullName] = ConcurrentLinkedQueue()
-            }
-        }
+    fun performCachedActions() {
+        flow.cachedActions.remove(javaClass.notNullName)?.forEach { performAction(it) }
+    }
 
-    fun attachToFlow() = attachToFlow(null, AttachMode.CONTINUE)
+    fun attachToFlow() = attachToFlow(this, AttachmentType.NORMAL_ATTACHMENT)
 
-    fun attachToFlow(primaryPerformer: FlowPerformer<F>?, attachMode: AttachMode) {
-        flow = (primaryPerformer?.flow ?: FlowProvider[flowClass]).also {
-            it.attachPerformer(this, attachMode)
-        }
+    fun attachToFlow(flowHost: FlowHost, attachmentType: AttachmentType) {
+
+            if (attachmentType == AttachmentType.REPLAY_ATTACHMENT) flow.replay()
+            val thisName = javaClass.notNullName
+            flow.performerDisposables.remove(thisName)?.dispose()
+            flow.performerDisposables[thisName] = flow.actionSubject
+                .subscribeOn(Schedulers.single())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ performAction(it) }) { throw  it }
     }
 
     fun eventOccurred(event: Event) {
@@ -38,7 +38,15 @@ interface FlowPerformer<F : Flow> {
 
     fun performAction(action: Action) = Unit
 
-    fun detachFromFlow() {
-        flow?.detachPerformer(this)
+    fun detachFromFlow() = detachFromFlow(false)
+
+    fun detachFromFlow(cacheActions: Boolean) {
+        flow?.let { flow ->
+            val thisName = javaClass.notNullName
+            flow.performerDisposables.remove(thisName)?.dispose()
+            if (cacheActions) flow.cachedActions[thisName] = ConcurrentLinkedQueue()
+            flow.onPerformerDetached()
+        }
+        flow = null
     }
 }
