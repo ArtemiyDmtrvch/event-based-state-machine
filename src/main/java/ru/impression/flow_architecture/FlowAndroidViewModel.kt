@@ -5,12 +5,8 @@ import android.arch.lifecycle.AndroidViewModel
 
 abstract class FlowAndroidViewModel<F : Flow>(
     application: Application,
-    override val flowClass: Class<F>
-) : AndroidViewModel(application), IFlowViewModel<F> {
-
-    override var flow: Flow? = null
-
-    override val savedViewAdditionalStates = HashMap<String, Any>()
+    override val flowHost: FlowHost<F>
+) : AndroidViewModel(application), FlowPerformer<F> {
 
     final override fun attachToFlow() = super.attachToFlow()
 

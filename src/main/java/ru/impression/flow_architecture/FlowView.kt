@@ -1,29 +1,16 @@
 package ru.impression.flow_architecture
 
-import android.arch.lifecycle.ViewModel
-import android.arch.lifecycle.ViewModelProviders
-import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentActivity
-
 interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
 
-    val flowViewModelClass: Class<out ViewModel>?
+    val flowClass: Class<F>
 
-    var flowViewModel: IFlowViewModel<F>?
+    override val flowHost: FlowHostViewModel<F>
 
     var additionalState: S
 
     override fun attachToFlow() {
-        val viewModelProvider = when (this) {
-            is Fragment -> ViewModelProviders.of(this)
-            is FragmentActivity -> ViewModelProviders.of(this)
-            else -> null
-        }
-        val flowHostViewModel = viewModelProvider?.get(FlowViewModel::class.java)
-        initFlow(flowViewModel)
         super.attachToFlow(
-            flowViewModel ?: this,
-            if (flow?.cachedActions?.containsKey(javaClass.notNullName) == true)
+            if (flowHost.flow.cachedActions.containsKey(javaClass.notNullName))
                 AttachmentType.REPLAY_ATTACHMENT
             else
                 AttachmentType.NORMAL_ATTACHMENT
@@ -31,17 +18,17 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
     }
 
     fun groundStateIsSet() {
-        flowViewModel?.savedViewAdditionalStates
-            ?.remove(javaClass.notNullName)
+        flowHost.savedViewAdditionalStates
+            .remove(javaClass.notNullName)
             ?.let { additionalState = it as S }
         performCachedActions()
     }
 
     override fun detachFromFlow(cacheActions: Boolean) {
+        super.detachFromFlow(cacheActions)
         if (cacheActions)
             additionalState
                 .takeIf { it !is Unit && it !is Nothing }
-                ?.let { flowViewModel?.savedViewAdditionalStates?.put(javaClass.notNullName, it) }
-        super.detachFromFlow(cacheActions)
+                ?.let { flowHost.savedViewAdditionalStates.put(javaClass.notNullName, it) }
     }
 }

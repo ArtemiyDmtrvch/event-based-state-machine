@@ -1,6 +1,6 @@
 package ru.impression.flow_architecture
 
-interface FlowHost {
+interface FlowHost<F: Flow> {
 
-    val flow: Flow
+    val flow: F
 }
