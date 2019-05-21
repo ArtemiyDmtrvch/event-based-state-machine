@@ -36,7 +36,7 @@ abstract class Flow {
 
     internal val actionSubject = ReplaySubject.createWithSize<Action>(1)
 
-    internal val cachedActions = ConcurrentHashMap<String, ConcurrentLinkedQueue<Action>>()
+    internal val temporarilyDetachedPerformers = ConcurrentLinkedQueue<String>()
 
     protected inline fun <reified E : Event> whenEventOccurs(crossinline onEvent: (E) -> Unit) {
         onEvents[E::class.java.notNullName] = {
@@ -122,7 +122,6 @@ abstract class Flow {
 
     protected fun performAction(action: Action) {
         actionSubject.onNext(action)
-        cachedActions.forEach { if (!performerDisposables.contains(it.key)) it.value.add(action) }
         if (action is InitiatingAction && action.flowClass != javaClass) {
             action.flowClass.newInstance()
                 .apply {

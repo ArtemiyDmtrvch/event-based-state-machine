@@ -2,7 +2,6 @@ package ru.impression.flow_architecture
 
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
-import java.util.concurrent.ConcurrentLinkedQueue
 
 interface FlowPerformer<F : Flow> {
 
@@ -15,12 +14,12 @@ interface FlowPerformer<F : Flow> {
     fun attachToFlow(attachmentType: AttachmentType) {
         val thisName = javaClass.notNullName
         if (flowHost.flow.performerDisposables.containsKey(thisName)) return
-        if (attachmentType == AttachmentType.REPLAY_ATTACHMENT) flowHost.flow.actionSubject.cleanupBuffer()
+        if (attachmentType == AttachmentType.REPLAY_ATTACHMENT) flowHost.flow.replay()
         flowHost.flow.performerDisposables[thisName] = flowHost.flow.actionSubject
             .subscribeOn(Schedulers.single())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({ performAction(it) }) { throw  it }
-        if (attachmentType == AttachmentType.REPLAY_ATTACHMENT) flowHost.flow.replay()
+        flowHost.flow.temporarilyDetachedPerformers.remove(thisName)
     }
 
     fun eventOccurred(event: Event) {
@@ -32,17 +31,15 @@ interface FlowPerformer<F : Flow> {
 
     fun performAction(action: Action) = Unit
 
-    fun performCachedActions() {
-        flowHost.flow.cachedActions.remove(javaClass.notNullName)?.forEach { performAction(it) }
+    fun temporarilyDetachFromFlow() {
+        flowHost.flow.temporarilyDetachedPerformers.add(javaClass.notNullName)
+        detachFromFlow()
     }
 
-    fun detachFromFlow() = detachFromFlow(false)
-
-    fun detachFromFlow(cacheActions: Boolean) {
+    fun detachFromFlow() {
         val thisName = javaClass.notNullName
         if (!flowHost.flow.performerDisposables.containsKey(thisName)) return
         flowHost.flow.performerDisposables.remove(thisName)?.dispose()
-        if (cacheActions) flowHost.flow.cachedActions[thisName] = ConcurrentLinkedQueue()
         flowHost.flow.onPerformerDetached()
     }
 }

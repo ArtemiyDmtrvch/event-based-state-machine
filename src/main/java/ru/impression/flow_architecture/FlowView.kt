@@ -10,7 +10,7 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
 
     override fun attachToFlow() {
         super.attachToFlow(
-            if (flowHost.flow.cachedActions.containsKey(javaClass.notNullName))
+            if (flowHost.flow.temporarilyDetachedPerformers.contains(javaClass.notNullName))
                 AttachmentType.REPLAY_ATTACHMENT
             else
                 AttachmentType.NORMAL_ATTACHMENT
@@ -21,11 +21,10 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
         flowHost.savedViewAdditionalStates
             .remove(javaClass.notNullName)
             ?.let { additionalState = it as S }
-        performCachedActions()
     }
 
-    fun detachFromFlowForAWhile() {
-        detachFromFlow(true)
+    override fun temporarilyDetachFromFlow() {
+        super.temporarilyDetachFromFlow()
         additionalState
             .takeIf { it !is Unit && it !is Nothing }
             ?.let { flowHost.savedViewAdditionalStates.put(javaClass.notNullName, it) }
