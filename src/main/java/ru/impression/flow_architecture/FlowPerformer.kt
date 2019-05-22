@@ -2,41 +2,57 @@ package ru.impression.flow_architecture
 
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
+import java.util.*
+import java.util.concurrent.ConcurrentLinkedQueue
 
 interface FlowPerformer<F : Flow> {
 
-    val flowClass: Class<F>
+    val groupUUID: UUID
 
-    val eventEnrichers: List<FlowPerformer<F>> get() = emptyList()
+    val flow: F get() = FlowStore[groupUUID]!!
 
-    fun attachToFlow() {
-        val flowName = flowClass.notNullName
+    val eventEnrichers: Array<FlowPerformer<F>> get() = emptyArray()
+
+    fun attachToFlow() = attachToFlow(AttachmentType.NORMAL_ATTACHMENT)
+
+    fun attachToFlow(attachmentType: AttachmentType) {
         val thisName = javaClass.notNullName
-        FLOW_PERFORMER_DISPOSABLES[flowName]?.get(thisName)?.dispose()
-        FlowManager.startFlowIfNeeded(flowClass)
-        ACTION_SUBJECTS[flowName]?.let { actionSubject ->
-            actionSubject
-                .subscribeOn(Schedulers.newThread())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ performAction(it) }) { throw it }
-                .let { FLOW_PERFORMER_DISPOSABLES[flowName]?.put(thisName, it) }
-        }
+        if (flow.performerDisposables.containsKey(thisName)) return
+        flow.temporarilyDetachedPerformers.remove(thisName)
+        if (attachmentType == AttachmentType.REPLAY_ATTACHMENT) flow.replay()
+        flow.performerDisposables[thisName] = flow.actionSubject
+            .subscribeOn(Schedulers.single())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({ performAction(it) }) { throw  it }
     }
 
     fun eventOccurred(event: Event) {
-        val flowName = flowClass.notNullName
         eventEnrichers.forEach { it.enrichEvent(event) }
-        EVENT_SUBJECTS[flowName]?.onNext(event)
+        flow.eventOccurred(event)
     }
 
     fun enrichEvent(event: Event) = Unit
 
     fun performAction(action: Action) = Unit
 
-    fun detachFromFlow() {
-        val flowName = flowClass.notNullName
+    fun performMissedActions() {
+        flow.missedActions.remove(javaClass.notNullName)?.forEach { performAction(it) }
+    }
+
+    fun temporarilyDetachFromFlow(cacheMissedActions: Boolean) {
         val thisName = javaClass.notNullName
-        FLOW_PERFORMER_DISPOSABLES[flowName]?.remove(thisName)?.dispose()
-        FlowManager.stopFlowIfNeeded(flowClass)
+        flow.temporarilyDetachedPerformers.add(thisName)
+        if (cacheMissedActions) flow.missedActions[thisName] = ConcurrentLinkedQueue()
+        detachFromFlow()
+    }
+
+    fun detachFromFlow() {
+        flow.performerDisposables.remove(javaClass.notNullName)?.dispose()
+        flow.onPerformerDetached()
+    }
+
+    enum class AttachmentType {
+        NORMAL_ATTACHMENT,
+        REPLAY_ATTACHMENT
     }
 }
