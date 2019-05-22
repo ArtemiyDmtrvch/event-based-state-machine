@@ -2,10 +2,14 @@ package ru.impression.flow_architecture
 
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
+import java.util.*
+import java.util.concurrent.ConcurrentLinkedQueue
 
 interface FlowPerformer<F : Flow> {
 
-    val flowHost: FlowHost<F>
+    val groupUUID: UUID
+
+    val flow: F get() = FlowStore[groupUUID]!!
 
     val eventEnrichers: Array<FlowPerformer<F>> get() = emptyArray()
 
@@ -13,35 +17,38 @@ interface FlowPerformer<F : Flow> {
 
     fun attachToFlow(attachmentType: AttachmentType) {
         val thisName = javaClass.notNullName
-        if (flowHost.flow.performerDisposables.containsKey(thisName)) return
-        if (attachmentType == AttachmentType.REPLAY_ATTACHMENT) flowHost.flow.replay()
-        flowHost.flow.performerDisposables[thisName] = flowHost.flow.actionSubject
+        if (flow.performerDisposables.containsKey(thisName)) return
+        if (attachmentType == AttachmentType.REPLAY_ATTACHMENT) flow.replay()
+        flow.performerDisposables[thisName] = flow.actionSubject
             .subscribeOn(Schedulers.single())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({ performAction(it) }) { throw  it }
-        flowHost.flow.temporarilyDetachedPerformers.remove(thisName)
-        flowHost.flow.onPerformerAttached()
+        flow.temporarilyDetachedPerformers.remove(thisName)
     }
 
     fun eventOccurred(event: Event) {
         eventEnrichers.forEach { it.enrichEvent(event) }
-        flowHost.flow.eventOccurred(event)
+        flow.eventOccurred(event)
     }
 
     fun enrichEvent(event: Event) = Unit
 
     fun performAction(action: Action) = Unit
 
-    fun temporarilyDetachFromFlow() {
-        flowHost.flow.temporarilyDetachedPerformers.add(javaClass.notNullName)
+    fun performCachedActions() {
+        flow.cachedActions.remove(javaClass.notNullName)?.forEach { performAction(it) }
+    }
+
+    fun temporarilyDetachFromFlow(cacheActions: Boolean) {
+        val thisName = javaClass.notNullName
+        flow.temporarilyDetachedPerformers.add(thisName)
+        if (cacheActions) flow.cachedActions[thisName] = ConcurrentLinkedQueue()
         detachFromFlow()
     }
 
     fun detachFromFlow() {
-        val thisName = javaClass.notNullName
-        if (!flowHost.flow.performerDisposables.containsKey(thisName)) return
-        flowHost.flow.performerDisposables.remove(thisName)?.dispose()
-        flowHost.flow.onPerformerDetached()
+        flow.performerDisposables.remove(javaClass.notNullName)?.dispose()
+        flow.onPerformerDetached()
     }
 
     enum class AttachmentType {

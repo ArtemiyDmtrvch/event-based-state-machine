@@ -10,13 +10,16 @@ import io.reactivex.functions.Function4
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 import io.reactivex.subjects.ReplaySubject
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
 abstract class Flow {
 
+    internal lateinit var performerGroupUUID: UUID
+
     @PublishedApi
-    internal var parentFlow: Flow? = null
+    internal var parentPerformerGroupUUID: UUID? = null
 
     private var replayableInitiatingAction: ReplayableInitiatingAction? = null
 
@@ -38,23 +41,10 @@ abstract class Flow {
 
     internal val temporarilyDetachedPerformers = ConcurrentLinkedQueue<String>()
 
-    @PublishedApi
-    internal val pendingResultingEvents = ConcurrentLinkedQueue<ResultingEvent>()
-
-    @PublishedApi
-    internal val performingMode
-        get() = if (temporarilyDetachedPerformers.isEmpty()) PerformingMode.FULL else PerformingMode.PARTIAL
+    internal val cachedActions = ConcurrentHashMap<String, ConcurrentLinkedQueue<Action>>()
 
     protected inline fun <reified E : Event> whenEventOccurs(crossinline onEvent: (E) -> Unit) {
-        onEvents[E::class.java.notNullName] = { event ->
-            onEvent(event as E)
-            if (event is ResultingEvent) parentFlow?.let { parentFlow ->
-                if (parentFlow.performingMode == PerformingMode.FULL)
-                    parentFlow.eventOccurred(event)
-                else
-                    parentFlow.pendingResultingEvents.add(event)
-            }
-        }
+        onEvents[E::class.java.notNullName] = { onEvent(it as E) }
     }
 
     protected inline fun <reified E1 : Event, reified E2 : Event> whenSeriesOfEventsOccur(
@@ -126,13 +116,6 @@ abstract class Flow {
             .let { disposable -> disposables.add(disposable) }
     }
 
-    internal fun onPerformerAttached() {
-        if (performingMode == PerformingMode.FULL) pendingResultingEvents.forEach {
-            eventOccurred(it)
-            pendingResultingEvents.remove(it)
-        }
-    }
-
     @PublishedApi
     internal fun eventOccurred(event: Event) {
         onEvents[event.javaClass.notNullName]?.invoke(event)
@@ -141,14 +124,13 @@ abstract class Flow {
 
     protected fun performAction(action: Action) {
         actionSubject.onNext(action)
+        cachedActions.values.forEach { it.add(action) }
         if (action is InitiatingAction && action.flowClass != javaClass) {
-            action.flowClass.newInstance()
-                .also { it.parentFlow = this }
-                .apply {
-                    if (action is ReplayableInitiatingAction) replayableInitiatingAction = action
-                    performAction(action)
-                }
-                .let { FlowStore.waitingFlows.add(it) }
+            FlowStore.add(action.flowClass).also {
+                it.parentPerformerGroupUUID = performerGroupUUID
+                if (action is ReplayableInitiatingAction) it.replayableInitiatingAction = action
+                it.performAction(action)
+            }
         }
     }
 
@@ -158,12 +140,7 @@ abstract class Flow {
         if (performerDisposables.isEmpty()) {
             onEvents.clear()
             disposables.dispose()
+            FlowStore.remove(performerGroupUUID)
         }
-    }
-
-    @PublishedApi
-    internal enum class PerformingMode {
-        FULL,
-        PARTIAL
     }
 }

@@ -1,6 +1,5 @@
 package ru.impression.flow_architecture
 
-import android.arch.lifecycle.ViewModelProviders
 import android.os.Bundle
 import android.support.v4.app.DialogFragment
 import android.view.LayoutInflater
@@ -11,12 +10,11 @@ import android.widget.FrameLayout
 abstract class FlowDialogFragment<F : Flow, S : Any>(override val flowClass: Class<F>) :
     DialogFragment(), FlowView<F, S> {
 
-    override val flowHost by lazy {
-        ViewModelProviders.of(
-            this,
-            FlowHostViewModelFactory(flowClass)
-        )[FlowHostViewModel::class.java] as FlowHostViewModel<F>
-    }
+    override val groupUUID = super.groupUUID
+
+    override val flow = super.flow
+
+    override var isTemporarilyDestroying: Boolean = super.isTemporarilyDestroying
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
         FrameLayout(activity!!)
@@ -39,7 +37,10 @@ abstract class FlowDialogFragment<F : Flow, S : Any>(override val flowClass: Cla
     }
 
     override fun onDestroyView() {
-        detachFromFlow()
+        if (isTemporarilyDestroying)
+            temporarilyDetachFromFlow()
+        else
+            detachFromFlow()
         super.onDestroyView()
     }
 }

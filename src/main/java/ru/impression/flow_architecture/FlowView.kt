@@ -1,16 +1,31 @@
 package ru.impression.flow_architecture
 
-interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
+import android.arch.lifecycle.ViewModelProviders
+import android.support.v4.app.Fragment
+import android.support.v4.app.FragmentActivity
+import java.lang.UnsupportedOperationException
 
-    val flowClass: Class<F>
-
-    override val flowHost: FlowHostViewModel<F>
+interface FlowView<F : Flow, S : Any> : PrimaryFlowPerformer<F> {
 
     var additionalState: S
 
+    val viewStateSavingViewModel: ViewStateSavingViewModel
+        get() {
+            val viewModelProvider = when (this) {
+                is Fragment -> ViewModelProviders.of(this)
+                is FragmentActivity -> ViewModelProviders.of(this)
+                else -> throw UnsupportedOperationException("FlowView must be either FragmentActivity or Fragment")
+            }
+            return viewModelProvider[ViewStateSavingViewModel::class.java]
+        }
+
+    var isTemporarilyDestroying: Boolean
+        get() = false
+        set(_) {}
+
     override fun attachToFlow() {
         super.attachToFlow(
-            if (flowHost.flow.temporarilyDetachedPerformers.contains(javaClass.notNullName))
+            if (flow.temporarilyDetachedPerformers.contains(javaClass.notNullName))
                 FlowPerformer.AttachmentType.REPLAY_ATTACHMENT
             else
                 FlowPerformer.AttachmentType.NORMAL_ATTACHMENT
@@ -18,15 +33,16 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
     }
 
     fun groundStateIsSet() {
-        flowHost.savedViewAdditionalStates
+        viewStateSavingViewModel.savedViewAdditionalStates
             .remove(javaClass.notNullName)
             ?.let { additionalState = it as S }
+        performCachedActions()
     }
 
-    override fun temporarilyDetachFromFlow() {
-        super.temporarilyDetachFromFlow()
+    override fun temporarilyDetachFromFlow(cacheActions: Boolean) {
         additionalState
             .takeIf { it !is Unit && it !is Nothing }
-            ?.let { flowHost.savedViewAdditionalStates.put(javaClass.notNullName, it) }
+            ?.let { viewStateSavingViewModel.savedViewAdditionalStates.put(javaClass.notNullName, it) }
+        super.temporarilyDetachFromFlow(cacheActions)
     }
 }
