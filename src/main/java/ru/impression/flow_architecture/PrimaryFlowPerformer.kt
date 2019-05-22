@@ -8,5 +8,5 @@ interface PrimaryFlowPerformer<F : Flow> : FlowPerformer<F> {
 
     val flowClass: Class<F>
 
-    override val flow get() = FlowStore.add(flowClass, groupUUID)
+    override val flow get() = FlowStore[groupUUID] ?: FlowStore.add(flowClass, groupUUID)
 }

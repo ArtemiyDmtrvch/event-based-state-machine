@@ -18,12 +18,12 @@ interface FlowPerformer<F : Flow> {
     fun attachToFlow(attachmentType: AttachmentType) {
         val thisName = javaClass.notNullName
         if (flow.performerDisposables.containsKey(thisName)) return
+        flow.temporarilyDetachedPerformers.remove(thisName)
         if (attachmentType == AttachmentType.REPLAY_ATTACHMENT) flow.replay()
         flow.performerDisposables[thisName] = flow.actionSubject
             .subscribeOn(Schedulers.single())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({ performAction(it) }) { throw  it }
-        flow.temporarilyDetachedPerformers.remove(thisName)
     }
 
     fun eventOccurred(event: Event) {
@@ -35,14 +35,14 @@ interface FlowPerformer<F : Flow> {
 
     fun performAction(action: Action) = Unit
 
-    fun performCachedActions() {
-        flow.cachedActions.remove(javaClass.notNullName)?.forEach { performAction(it) }
+    fun performMissedActions() {
+        flow.missedActions.remove(javaClass.notNullName)?.forEach { performAction(it) }
     }
 
-    fun temporarilyDetachFromFlow(cacheActions: Boolean) {
+    fun temporarilyDetachFromFlow(cacheMissedActions: Boolean) {
         val thisName = javaClass.notNullName
         flow.temporarilyDetachedPerformers.add(thisName)
-        if (cacheActions) flow.cachedActions[thisName] = ConcurrentLinkedQueue()
+        if (cacheMissedActions) flow.missedActions[thisName] = ConcurrentLinkedQueue()
         detachFromFlow()
     }
 

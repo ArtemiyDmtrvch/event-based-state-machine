@@ -36,13 +36,13 @@ interface FlowView<F : Flow, S : Any> : PrimaryFlowPerformer<F> {
         viewStateSavingViewModel.savedViewAdditionalStates
             .remove(javaClass.notNullName)
             ?.let { additionalState = it as S }
-        performCachedActions()
+        performMissedActions()
     }
 
-    override fun temporarilyDetachFromFlow(cacheActions: Boolean) {
+    fun temporarilyDetachFromFlow() {
         additionalState
             .takeIf { it !is Unit && it !is Nothing }
             ?.let { viewStateSavingViewModel.savedViewAdditionalStates.put(javaClass.notNullName, it) }
-        super.temporarilyDetachFromFlow(cacheActions)
+        super.temporarilyDetachFromFlow(true)
     }
 }

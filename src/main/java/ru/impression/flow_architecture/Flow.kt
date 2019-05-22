@@ -41,7 +41,7 @@ abstract class Flow {
 
     internal val temporarilyDetachedPerformers = ConcurrentLinkedQueue<String>()
 
-    internal val cachedActions = ConcurrentHashMap<String, ConcurrentLinkedQueue<Action>>()
+    internal val missedActions = ConcurrentHashMap<String, ConcurrentLinkedQueue<Action>>()
 
     protected inline fun <reified E : Event> whenEventOccurs(crossinline onEvent: (E) -> Unit) {
         onEvents[E::class.java.notNullName] = { onEvent(it as E) }
@@ -124,7 +124,7 @@ abstract class Flow {
 
     protected fun performAction(action: Action) {
         actionSubject.onNext(action)
-        cachedActions.values.forEach { it.add(action) }
+        missedActions.forEach { if (temporarilyDetachedPerformers.contains(it.key)) it.value.add(action) }
         if (action is InitiatingAction && action.flowClass != javaClass) {
             FlowStore.add(action.flowClass).also {
                 it.parentPerformerGroupUUID = performerGroupUUID
