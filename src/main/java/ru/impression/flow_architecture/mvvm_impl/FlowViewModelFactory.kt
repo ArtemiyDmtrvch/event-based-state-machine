@@ -1,4 +1,4 @@
-package ru.impression.flow_architecture
+package ru.impression.flow_architecture.mvvm_impl
 
 import android.app.Application
 import android.arch.lifecycle.ViewModel
@@ -10,12 +10,12 @@ class FlowViewModelFactory(private val application: Application, private val per
 
     override fun <T : ViewModel?> create(modelClass: Class<T>): T =
         when {
-            FlowViewModel::class.java.isAssignableFrom(modelClass) ->
-                modelClass.getConstructor(UUID::class.java).newInstance(performerGroupUUID)
             FlowAndroidViewModel::class.java.isAssignableFrom(modelClass) ->
                 modelClass
                     .getConstructor(Application::class.java, UUID::class.java)
                     .newInstance(application, performerGroupUUID)
+            FlowViewModel::class.java.isAssignableFrom(modelClass) ->
+                modelClass.getConstructor(UUID::class.java).newInstance(performerGroupUUID)
             else -> super.create(modelClass)
         }
 }
