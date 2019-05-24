@@ -120,6 +120,10 @@ abstract class Flow {
     internal fun eventOccurred(event: Event) {
         onEvents[event.javaClass.notNullName]?.invoke(event)
         eventSubject.onNext(event)
+        if (event is ResultingEvent && !event.occurredInChildFlow)
+            parentPerformerGroupUUID
+                ?.let { FlowStore.get<Flow>(it) }
+                ?.apply { eventOccurred(event.apply { occurredInChildFlow = true }) }
     }
 
     protected fun performAction(action: Action) {
@@ -136,7 +140,7 @@ abstract class Flow {
 
     internal fun replay() = replayableInitiatingAction?.let { performAction(it) }
 
-    fun onPerformerDetached() {
+    internal fun onPerformerDetached() {
         if (performerDisposables.isEmpty()) {
             onEvents.clear()
             disposables.dispose()
