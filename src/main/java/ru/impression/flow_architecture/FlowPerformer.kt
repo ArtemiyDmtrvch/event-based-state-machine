@@ -47,6 +47,7 @@ interface FlowPerformer<F : Flow> {
     }
 
     fun detachFromFlow() {
+        flow.missedActions.remove(javaClass.notNullName)
         flow.performerDisposables.remove(javaClass.notNullName)?.dispose()
         flow.onPerformerDetached()
     }

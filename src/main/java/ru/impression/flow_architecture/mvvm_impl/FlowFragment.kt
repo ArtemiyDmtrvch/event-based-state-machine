@@ -1,18 +1,21 @@
-package ru.impression.flow_architecture
+package ru.impression.flow_architecture.mvvm_impl
 
 import android.os.Bundle
-import android.support.v4.app.DialogFragment
+import android.support.v4.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import ru.impression.flow_architecture.Flow
+import java.util.*
 
-abstract class FlowDialogFragment<F : Flow, S : Any>(override val flowClass: Class<F>) :
-    DialogFragment(), FlowView<F, S> {
+private const val KEY_GROUP_UUID = "GROUP_UUID"
 
-    override val groupUUID = super.groupUUID
+abstract class FlowFragment<F : Flow, S : Any> : Fragment(), FlowView<F, S> {
 
-    override val flow = super.flow
+    override val groupUUID: UUID by lazy { UUID.fromString(arguments!!.getString(KEY_GROUP_UUID)) }
+
+    override val flow by lazy { super.flow }
 
     override var isTemporarilyDestroying: Boolean = super.isTemporarilyDestroying
 
@@ -42,5 +45,10 @@ abstract class FlowDialogFragment<F : Flow, S : Any>(override val flowClass: Cla
         else
             detachFromFlow()
         super.onDestroyView()
+    }
+
+    internal companion object {
+        fun <F : Flow, S : Any, T : FlowFragment<F, S>> newInstance(clazz: Class<T>, groupUUID: UUID): T =
+            clazz.newInstance().apply { arguments = Bundle().apply { putString(KEY_GROUP_UUID, groupUUID.toString()) } }
     }
 }

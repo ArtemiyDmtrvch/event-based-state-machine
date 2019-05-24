@@ -1,4 +1,4 @@
-package ru.impression.flow_architecture
+package ru.impression.flow_architecture.mvvm_impl
 
 import android.arch.lifecycle.ViewModel
 

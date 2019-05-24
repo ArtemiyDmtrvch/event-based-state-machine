@@ -4,9 +4,18 @@ import java.util.*
 
 interface PrimaryFlowPerformer<F : Flow> : FlowPerformer<F> {
 
-    override val groupUUID: UUID get() = UUID.randomUUID()
-
     val flowClass: Class<F>
 
-    override val flow get() = FlowStore[groupUUID] ?: FlowStore.add(flowClass, groupUUID)
+    override var groupUUID: UUID
+
+    fun retrieveGroupUUIDFromExistingLinkedPerformers(): UUID? = null
+
+    override val flow: F
+        get() = retrieveGroupUUIDFromExistingLinkedPerformers()?.let { retrievedUUID ->
+            groupUUID = retrievedUUID
+            FlowStore.get<F>(groupUUID)!!
+        } ?: run {
+            groupUUID = UUID.randomUUID()
+            FlowStore.add(flowClass, groupUUID)
+        }
 }
