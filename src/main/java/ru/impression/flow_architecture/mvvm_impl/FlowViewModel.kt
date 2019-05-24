@@ -17,7 +17,7 @@ abstract class FlowViewModel<F : Flow>(override val groupUUID: UUID) : ViewModel
     }
 
     override fun onCleared() {
-        detachFromFlow()
+        completelyDetachFromFlow()
         super.onCleared()
     }
 }

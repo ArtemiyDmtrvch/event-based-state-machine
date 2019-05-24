@@ -17,10 +17,6 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
     val viewStateSavingViewModel
         get() = getViewModelProvider(ViewModelProvider.NewInstanceFactory())[ViewStateSavingViewModel::class.java]
 
-    var isTemporarilyDestroying: Boolean
-        get() = false
-        set(_) {}
-
     override fun attachToFlow() {
         super.attachToFlow(
             if (flow.temporarilyDetachedPerformers.contains(javaClass.notNullName))

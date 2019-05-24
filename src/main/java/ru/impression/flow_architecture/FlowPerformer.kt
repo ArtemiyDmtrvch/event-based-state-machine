@@ -41,15 +41,17 @@ interface FlowPerformer<F : Flow> {
 
     fun temporarilyDetachFromFlow(cacheMissedActions: Boolean) {
         val thisName = javaClass.notNullName
+        flow.performerDisposables.remove(thisName)?.dispose()
         flow.temporarilyDetachedPerformers.add(thisName)
         if (cacheMissedActions) flow.missedActions[thisName] = ConcurrentLinkedQueue()
-        detachFromFlow()
     }
 
-    fun detachFromFlow() {
-        flow.missedActions.remove(javaClass.notNullName)
-        flow.performerDisposables.remove(javaClass.notNullName)?.dispose()
-        flow.onPerformerDetached()
+    fun completelyDetachFromFlow() {
+        val thisName = javaClass.notNullName
+        flow.performerDisposables.remove(thisName)?.dispose()
+        flow.temporarilyDetachedPerformers.remove(thisName)
+        flow.missedActions.remove(thisName)
+        flow.onPerformerCompletelyDetached()
     }
 
     enum class AttachmentType {

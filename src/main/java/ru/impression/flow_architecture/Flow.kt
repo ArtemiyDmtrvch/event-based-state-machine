@@ -140,7 +140,7 @@ abstract class Flow {
 
     internal fun replay() = replayableInitiatingAction?.let { performAction(it) }
 
-    internal fun onPerformerDetached() {
+    internal fun onPerformerCompletelyDetached() {
         if (performerDisposables.isEmpty()) {
             onEvents.clear()
             disposables.dispose()

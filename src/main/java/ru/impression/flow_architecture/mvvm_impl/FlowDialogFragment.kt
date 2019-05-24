@@ -17,13 +17,11 @@ abstract class FlowDialogFragment<F : Flow, S : Any> : DialogFragment(), FlowVie
 
     override val flow by lazy { super.flow }
 
-    override var isTemporarilyDestroying: Boolean = super.isTemporarilyDestroying
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
         FrameLayout(activity!!)
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
+    override fun onResume() {
+        super.onResume()
         attachToFlow()
     }
 
@@ -39,12 +37,14 @@ abstract class FlowDialogFragment<F : Flow, S : Any> : DialogFragment(), FlowVie
         }
     }
 
-    override fun onDestroyView() {
-        if (isTemporarilyDestroying)
-            temporarilyDetachFromFlow()
-        else
-            detachFromFlow()
-        super.onDestroyView()
+    override fun onPause() {
+        temporarilyDetachFromFlow()
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        completelyDetachFromFlow()
+        super.onDestroy()
     }
 
     internal companion object {
