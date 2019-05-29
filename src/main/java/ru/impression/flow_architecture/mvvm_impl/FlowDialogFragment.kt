@@ -11,21 +11,22 @@ import java.util.*
 
 private const val KEY_GROUP_UUID = "GROUP_UUID"
 
-abstract class FlowDialogFragment<F : Flow, S : Any> : DialogFragment(), FlowView<F, S> {
+abstract class FlowDialogFragment<F : Flow, S : Any>(private val isGraphical: Boolean = true) :
+    DialogFragment(), FlowView<F, S> {
 
     override val groupUUID: UUID by lazy { UUID.fromString(arguments!!.getString(KEY_GROUP_UUID)) }
 
     override val flow by lazy { super.flow }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
-        FrameLayout(activity!!)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
+        if (isGraphical) FrameLayout(activity!!) else null
 
     override fun onResume() {
         super.onResume()
         attachToFlow()
     }
 
-    protected fun setView(layoutResId: Int) =
+    protected open fun setView(layoutResId: Int) =
         setView(View.inflate(activity!!, layoutResId, null))
 
     protected open fun setView(view: View) {

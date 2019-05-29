@@ -1,9 +1,7 @@
 package ru.impression.flow_architecture
 
 import io.reactivex.Observable
-import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.disposables.Disposable
 import io.reactivex.functions.BiFunction
 import io.reactivex.functions.Function3
 import io.reactivex.functions.Function4
@@ -12,7 +10,6 @@ import io.reactivex.subjects.PublishSubject
 import io.reactivex.subjects.ReplaySubject
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentLinkedQueue
 
 abstract class Flow {
 
@@ -22,8 +19,6 @@ abstract class Flow {
     internal var parentPerformerGroupUUID: UUID? = null
 
     private var replayableInitiatingAction: ReplayableInitiatingAction? = null
-
-    internal val performerDisposables = ConcurrentHashMap<String, Disposable>()
 
     @PublishedApi
     internal val onEvents = ConcurrentHashMap<String, (Event) -> Unit>()
@@ -35,13 +30,14 @@ abstract class Flow {
     internal val subscriptionScheduler = Schedulers.io()
 
     @PublishedApi
+    internal val observingScheduler = Schedulers.single()
+
+    @PublishedApi
     internal val disposables = CompositeDisposable()
 
     internal val actionSubject = ReplaySubject.createWithSize<Action>(1)
 
-    internal val temporarilyDetachedPerformers = ConcurrentLinkedQueue<String>()
-
-    internal val missedActions = ConcurrentHashMap<String, ConcurrentLinkedQueue<Action>>()
+    internal val performerUnderlays = ConcurrentHashMap<String, FlowPerformerUnderlay>()
 
     protected inline fun <reified E : Event> whenEventOccurs(crossinline onEvent: (E) -> Unit) {
         onEvents[E::class.java.notNullName] = { onEvent(it as E) }
@@ -61,10 +57,10 @@ abstract class Flow {
                 BiFunction<E1, E2, Unit> { e1, e2 -> onSeriesOfEvents(e1, e2) }
             )
             .subscribeOn(subscriptionScheduler)
-            .observeOn(AndroidSchedulers.mainThread())
+            .observeOn(observingScheduler)
             .doOnError { throw it }
             .subscribe()
-            .let { disposable -> disposables.add(disposable) }
+            .let { disposables.add(it) }
     }
 
     protected inline fun <reified E1 : Event, reified E2 : Event, reified E3 : Event> whenSeriesOfEventsOccur(
@@ -84,10 +80,10 @@ abstract class Flow {
                 Function3<E1, E2, E3, Unit> { e1, e2, e3 -> onSeriesOfEvents(e1, e2, e3) }
             )
             .subscribeOn(subscriptionScheduler)
-            .observeOn(AndroidSchedulers.mainThread())
+            .observeOn(observingScheduler)
             .doOnError { throw it }
             .subscribe()
-            .let { disposable -> disposables.add(disposable) }
+            .let { disposables.add(it) }
     }
 
     protected inline fun <reified E1 : Event, reified E2 : Event, reified E3 : Event, reified E4 : Event> whenSeriesOfEventsOccur(
@@ -110,25 +106,28 @@ abstract class Flow {
                 Function4<E1, E2, E3, E4, Unit> { e1, e2, e3, e4 -> onSeriesOfEvents(e1, e2, e3, e4) }
             )
             .subscribeOn(subscriptionScheduler)
-            .observeOn(AndroidSchedulers.mainThread())
+            .observeOn(observingScheduler)
             .doOnError { throw it }
             .subscribe()
-            .let { disposable -> disposables.add(disposable) }
+            .let { disposables.add(it) }
     }
 
     @PublishedApi
     internal fun eventOccurred(event: Event) {
         onEvents[event.javaClass.notNullName]?.invoke(event)
         eventSubject.onNext(event)
-        if (event is ResultingEvent && !event.occurredInChildFlow)
+        if (event is ResultingEvent && event.numberOfParentRecipients > 0)
             parentPerformerGroupUUID
                 ?.let { FlowStore.get<Flow>(it) }
-                ?.apply { eventOccurred(event.apply { occurredInChildFlow = true }) }
+                ?.apply { eventOccurred(event.apply { numberOfParentRecipients-- }) }
     }
 
     protected fun performAction(action: Action) {
+        performerUnderlays.values.forEach {
+            it.numberOfUnperformedActions++
+            if (it.isTemporarilyDetached) it.missedActions?.add(action)
+        }
         actionSubject.onNext(action)
-        missedActions.forEach { if (temporarilyDetachedPerformers.contains(it.key)) it.value.add(action) }
         if (action is InitiatingAction && action.flowClass != javaClass) {
             FlowStore.add(action.flowClass).also {
                 it.parentPerformerGroupUUID = performerGroupUUID
@@ -141,7 +140,7 @@ abstract class Flow {
     internal fun replay() = replayableInitiatingAction?.let { performAction(it) }
 
     internal fun onPerformerCompletelyDetached() {
-        if (performerDisposables.isEmpty()) {
+        if (performerUnderlays.isEmpty()) {
             onEvents.clear()
             disposables.dispose()
             FlowStore.remove(performerGroupUUID)

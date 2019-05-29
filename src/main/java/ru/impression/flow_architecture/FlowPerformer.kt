@@ -11,19 +11,33 @@ interface FlowPerformer<F : Flow> {
 
     val flow: F get() = FlowStore[groupUUID]!!
 
+    var underlay: FlowPerformerUnderlay?
+        get() = flow.performerUnderlays[javaClass.notNullName]
+        set(value) {
+            value
+                ?.let { flow.performerUnderlays[javaClass.notNullName] = it }
+                ?: flow.performerUnderlays.remove(javaClass.notNullName)
+        }
+
     val eventEnrichers: Array<FlowPerformer<F>> get() = emptyArray()
 
     fun attachToFlow() = attachToFlow(AttachmentType.NORMAL_ATTACHMENT)
 
     fun attachToFlow(attachmentType: AttachmentType) {
-        val thisName = javaClass.notNullName
-        if (flow.performerDisposables.containsKey(thisName)) return
-        flow.temporarilyDetachedPerformers.remove(thisName)
-        if (attachmentType == AttachmentType.REPLAY_ATTACHMENT) flow.replay()
-        flow.performerDisposables[thisName] = flow.actionSubject
-            .subscribeOn(Schedulers.single())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe({ performAction(it) }) { throw  it }
+        (underlay?.apply {
+            if (!isTemporarilyDetached) return
+            isTemporarilyDetached = false
+        } ?: FlowPerformerUnderlay().also { underlay = it }).apply {
+            if (attachmentType == AttachmentType.REPLAY_ATTACHMENT) flow.replay()
+            disposable = flow.actionSubject
+                .subscribeOn(Schedulers.single())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({
+                    performAction(it)
+                    numberOfUnperformedActions--
+                    if (numberOfUnperformedActions == 0) onAllActionsPerformed()
+                }) { throw  it }
+        }
     }
 
     fun eventOccurred(event: Event) {
@@ -35,22 +49,27 @@ interface FlowPerformer<F : Flow> {
 
     fun performAction(action: Action) = Unit
 
+    fun onAllActionsPerformed() = Unit
+
     fun performMissedActions() {
-        flow.missedActions.remove(javaClass.notNullName)?.forEach { performAction(it) }
+        underlay?.apply {
+            missedActions?.forEach { performAction(it) }
+            missedActions = null
+        }
     }
 
     fun temporarilyDetachFromFlow(cacheMissedActions: Boolean) {
-        val thisName = javaClass.notNullName
-        flow.performerDisposables.remove(thisName)?.dispose()
-        flow.temporarilyDetachedPerformers.add(thisName)
-        if (cacheMissedActions) flow.missedActions[thisName] = ConcurrentLinkedQueue()
+        underlay?.apply {
+            if (isTemporarilyDetached) return
+            disposable?.dispose()
+            if (cacheMissedActions) missedActions = ConcurrentLinkedQueue()
+            isTemporarilyDetached = true
+        }
     }
 
     fun completelyDetachFromFlow() {
-        val thisName = javaClass.notNullName
-        flow.performerDisposables.remove(thisName)?.dispose()
-        flow.temporarilyDetachedPerformers.remove(thisName)
-        flow.missedActions.remove(thisName)
+        underlay?.disposable?.dispose() ?: return
+        underlay = null
         flow.onPerformerCompletelyDetached()
     }
 

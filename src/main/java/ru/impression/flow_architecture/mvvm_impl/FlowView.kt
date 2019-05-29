@@ -19,7 +19,7 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
 
     override fun attachToFlow() {
         super.attachToFlow(
-            if (flow.temporarilyDetachedPerformers.contains(javaClass.notNullName))
+            if (underlay?.isTemporarilyDetached == true)
                 FlowPerformer.AttachmentType.REPLAY_ATTACHMENT
             else
                 FlowPerformer.AttachmentType.NORMAL_ATTACHMENT
