@@ -17,6 +17,8 @@ abstract class FlowFragment<F : Flow, S : Any>(private val isGraphical: Boolean 
 
     override val flow by lazy { super.flow }
 
+    override var disposable = super.disposable
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
         if (isGraphical) FrameLayout(activity!!) else null
 

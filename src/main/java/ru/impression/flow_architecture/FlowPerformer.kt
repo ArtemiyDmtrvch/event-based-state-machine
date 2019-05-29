@@ -1,6 +1,7 @@
 package ru.impression.flow_architecture
 
 import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -19,25 +20,34 @@ interface FlowPerformer<F : Flow> {
                 ?: flow.performerUnderlays.remove(javaClass.notNullName)
         }
 
+    var disposable: Disposable?
+        get() = null
+        set(_) {}
+
     val eventEnrichers: Array<FlowPerformer<F>> get() = emptyArray()
 
     fun attachToFlow() = attachToFlow(AttachmentType.NORMAL_ATTACHMENT)
 
     fun attachToFlow(attachmentType: AttachmentType) {
-        (underlay?.apply {
-            if (!isTemporarilyDetached) return
-            isTemporarilyDetached = false
-        } ?: FlowPerformerUnderlay().also { underlay = it }).apply {
+        (underlay
+            ?.apply {
+                if (!isTemporarilyDetached) return
+                isTemporarilyDetached = false
+            }
+            ?: FlowPerformerUnderlay().also { underlay = it }).apply {
             if (attachmentType == AttachmentType.REPLAY_ATTACHMENT) flow.replay()
-            disposable = flow.actionSubject
-                .subscribeOn(Schedulers.single())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({
-                    performAction(it)
+            if (flow.actionSubject.hasValue()) numberOfUnperformedActions++
+        }
+        disposable = flow.actionSubject
+            .subscribeOn(Schedulers.single())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({
+                performAction(it)
+                underlay?.apply {
                     numberOfUnperformedActions--
                     if (numberOfUnperformedActions == 0) onAllActionsPerformed()
-                }) { throw  it }
-        }
+                }
+            }) { throw  it }
     }
 
     fun eventOccurred(event: Event) {
@@ -68,7 +78,8 @@ interface FlowPerformer<F : Flow> {
     }
 
     fun completelyDetachFromFlow() {
-        underlay?.disposable?.dispose() ?: return
+        underlay ?: return
+        disposable?.dispose()
         underlay = null
         flow.onPerformerCompletelyDetached()
     }

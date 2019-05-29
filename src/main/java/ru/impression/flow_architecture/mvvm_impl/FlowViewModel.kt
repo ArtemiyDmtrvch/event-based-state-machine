@@ -16,6 +16,8 @@ abstract class FlowViewModel<F : Flow>(override val groupUUID: UUID) : ViewModel
 
     override val flow = super.flow
 
+    override var disposable = super.disposable
+
     var detachmentRequired = false
 
     init {

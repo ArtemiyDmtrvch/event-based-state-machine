@@ -11,6 +11,8 @@ abstract class FlowActivity<F : Flow, S : Any>(override val flowClass: Class<F>)
 
     override val flow by lazy { super.flow }
 
+    override var disposable = super.disposable
+
     override fun onResume() {
         super.onResume()
         attachToFlow()
