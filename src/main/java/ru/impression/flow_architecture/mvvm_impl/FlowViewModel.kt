@@ -27,7 +27,10 @@ abstract class FlowViewModel<F : Flow>(override val groupUUID: UUID) : ViewModel
     final override fun attachToFlow() = super.attachToFlow()
 
     override fun onAllActionsPerformed() {
-        if (detachmentRequired) completelyDetachFromFlow()
+        if (detachmentRequired) {
+            completelyDetachFromFlow()
+            detachmentRequired = true
+        }
     }
 
     override fun onCleared() {

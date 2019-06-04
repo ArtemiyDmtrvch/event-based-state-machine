@@ -18,7 +18,7 @@ abstract class Flow {
     @PublishedApi
     internal var parentPerformerGroupUUID: UUID? = null
 
-    private var replayableInitiatingAction: ReplayableInitiatingAction? = null
+    private var replayableAction: Action? = null
 
     @PublishedApi
     internal val onEvents = ConcurrentHashMap<String, (Event) -> Unit>()
@@ -38,6 +38,8 @@ abstract class Flow {
     internal val actionSubject = ReplaySubject.createWithSize<Action>(1)
 
     internal val performerUnderlays = ConcurrentHashMap<String, FlowPerformerUnderlay>()
+
+    private var isReplaying = false
 
     protected inline fun <reified E : Event> whenEventOccurs(crossinline onEvent: (E) -> Unit) {
         onEvents[E::class.java.notNullName] = { onEvent(it as E) }
@@ -122,22 +124,29 @@ abstract class Flow {
                 ?.apply { eventOccurred(event.apply { numberOfParentRecipients-- }) }
     }
 
-    protected fun performAction(action: Action) {
+    protected open fun performAction(action: Action) {
+        if ((action is ReplayableAction || (action is ReplayableInitiatingAction && action.flowClass == javaClass))
+            && !isReplaying
+        ) replayableAction = action
         performerUnderlays.values.forEach {
             it.numberOfUnperformedActions++
             if (it.isTemporarilyDetached) it.missedActions?.add(action)
         }
         actionSubject.onNext(action)
-        if (action is InitiatingAction && action.flowClass != javaClass) {
+        if (action is InitiatingAction && action.flowClass != javaClass)
             FlowStore.add(action.flowClass).also {
                 it.parentPerformerGroupUUID = performerGroupUUID
-                if (action is ReplayableInitiatingAction) it.replayableInitiatingAction = action
                 it.performAction(action)
             }
-        }
     }
 
-    internal fun replay() = replayableInitiatingAction?.let { performAction(it) }
+    internal fun replay() {
+        replayableAction?.let {
+            isReplaying = true
+            performAction(it)
+            isReplaying = false
+        }
+    }
 
     internal fun onPerformerCompletelyDetached() {
         if (performerUnderlays.isEmpty()) {

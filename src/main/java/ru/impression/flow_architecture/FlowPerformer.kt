@@ -63,7 +63,11 @@ interface FlowPerformer<F : Flow> {
 
     fun performMissedActions() {
         underlay?.apply {
-            missedActions?.forEach { performAction(it) }
+            missedActions?.apply {
+                while (true) {
+                    poll()?.let { performAction(it) } ?: break
+                }
+            }
             missedActions = null
         }
     }
