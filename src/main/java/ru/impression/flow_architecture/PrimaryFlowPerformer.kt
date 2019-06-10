@@ -8,10 +8,10 @@ interface PrimaryFlowPerformer<F : Flow> : FlowPerformer<F> {
 
     override var groupUUID: UUID
 
-    fun retrieveGroupUUIDFromExistingLinkedPerformers(): UUID? = null
+    fun retrieveGroupUUID(): UUID? = null
 
     override val flow: F
-        get() = retrieveGroupUUIDFromExistingLinkedPerformers()?.let { retrievedUUID ->
+        get() = retrieveGroupUUID()?.let { retrievedUUID ->
             groupUUID = retrievedUUID
             FlowStore.get<F>(groupUUID)!!
         } ?: run {

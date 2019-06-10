@@ -13,6 +13,8 @@ abstract class FlowActivity<F : Flow, S : Any>(override val flowClass: Class<F>)
 
     override var disposable = super.disposable
 
+    override var viewWasDestroyed = super.viewWasDestroyed
+
     override fun onResume() {
         super.onResume()
         attachToFlow()
@@ -24,6 +26,7 @@ abstract class FlowActivity<F : Flow, S : Any>(override val flowClass: Class<F>)
     }
 
     override fun onDestroy() {
+        viewWasDestroyed = true
         completelyDetachFromFlow()
         super.onDestroy()
     }

@@ -14,7 +14,8 @@ class FlowViewModelFactory(private val application: Application, private val per
                 modelClass
                     .getConstructor(Application::class.java, UUID::class.java)
                     .newInstance(application, performerGroupUUID)
-            FlowViewModel::class.java.isAssignableFrom(modelClass) ->
+            FlowViewModel::class.java.isAssignableFrom(modelClass)
+                    || ViewStateSavingViewModel::class.java.isAssignableFrom(modelClass) ->
                 modelClass.getConstructor(UUID::class.java).newInstance(performerGroupUUID)
             else -> super.create(modelClass)
         }

@@ -19,6 +19,8 @@ abstract class FlowFragment<F : Flow, S : Any>(private val isGraphical: Boolean 
 
     override var disposable = super.disposable
 
+    override var viewWasDestroyed = super.viewWasDestroyed
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
         if (isGraphical) FrameLayout(activity!!) else null
 
@@ -42,6 +44,11 @@ abstract class FlowFragment<F : Flow, S : Any>(private val isGraphical: Boolean 
     override fun onPause() {
         temporarilyDetachFromFlow()
         super.onPause()
+    }
+
+    override fun onDestroyView() {
+        viewWasDestroyed = true
+        super.onDestroyView()
     }
 
     override fun onDestroy() {

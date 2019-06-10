@@ -12,14 +12,18 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
 
     val flowViewModelClasses get() = emptyArray<Class<out FlowViewModel<F>>>()
 
+    val viewStateSavingViewModel
+        get() = getViewModelProvider()[ViewStateSavingViewModel::class.java]
+
     var additionalState: S
 
-    val viewStateSavingViewModel
-        get() = getViewModelProvider(ViewModelProvider.NewInstanceFactory())[ViewStateSavingViewModel::class.java]
+    var viewWasDestroyed
+        get() = false
+        set(_) {}
 
     override fun attachToFlow() {
         super.attachToFlow(
-            if (underlay?.isTemporarilyDetached == true)
+            if (underlay?.isTemporarilyDetached == true && viewWasDestroyed)
                 FlowPerformer.AttachmentType.REPLAY_ATTACHMENT
             else
                 FlowPerformer.AttachmentType.NORMAL_ATTACHMENT
@@ -40,7 +44,6 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
             else -> throw UnsupportedOperationException("FlowView must be either FragmentActivity or Fragment.")
         }
 
-
     fun groundStateIsSet() {
         viewStateSavingViewModel.savedViewAdditionalStates
             .remove(javaClass.notNullName)
@@ -54,4 +57,9 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
             ?.let { viewStateSavingViewModel.savedViewAdditionalStates.put(javaClass.notNullName, it) }
         super.temporarilyDetachFromFlow(true)
     }
+//
+//    override fun completelyDetachFromFlow() {
+//        if (!viewStateSavingViewModel.isCleared) return
+//        super.completelyDetachFromFlow()
+//    }
 }

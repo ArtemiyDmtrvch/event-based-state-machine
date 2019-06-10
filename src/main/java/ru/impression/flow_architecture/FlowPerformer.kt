@@ -35,8 +35,13 @@ interface FlowPerformer<F : Flow> {
                 isTemporarilyDetached = false
             }
             ?: FlowPerformerUnderlay().also { underlay = it }).apply {
-            if (attachmentType == AttachmentType.REPLAY_ATTACHMENT) flow.replay()
-            if (flow.actionSubject.hasValue()) numberOfUnperformedActions++
+            if (attachmentType == AttachmentType.REPLAY_ATTACHMENT)
+                flow.replay()
+            else {
+                if (flow.actionSubject.hasValue())
+                    missedActions?.remove(flow.actionSubject.value) ?: numberOfUnperformedActions++
+                performMissedActions()
+            }
         }
         disposable = flow.actionSubject
             .subscribeOn(Schedulers.single())
