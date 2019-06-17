@@ -6,14 +6,14 @@ import io.reactivex.schedulers.Schedulers
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
 
-interface FlowPerformer<F : Flow> {
+interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
 
     val groupUUID: UUID
 
     val flow: F get() = FlowStore[groupUUID]!!
 
-    var underlay: FlowPerformerUnderlay?
-        get() = flow.performerUnderlays[javaClass.notNullName]
+    var underlay: U?
+        get() = flow.performerUnderlays[javaClass.notNullName] as U?
         set(value) {
             value
                 ?.let { flow.performerUnderlays[javaClass.notNullName] = it }
@@ -24,35 +24,10 @@ interface FlowPerformer<F : Flow> {
         get() = null
         set(_) {}
 
-    val eventEnrichers: Array<FlowPerformer<F>> get() = emptyArray()
+    val eventEnrichers: Array<FlowPerformer<F, U>> get() = emptyArray()
 
-    fun attachToFlow() = attachToFlow(AttachmentType.NORMAL_ATTACHMENT)
-
-    fun attachToFlow(attachmentType: AttachmentType) {
-        (underlay
-            ?.apply {
-                if (!isTemporarilyDetached) return
-                isTemporarilyDetached = false
-            }
-            ?: FlowPerformerUnderlay().also { underlay = it }).apply {
-            if (attachmentType == AttachmentType.REPLAY_ATTACHMENT)
-                flow.replay()
-            else {
-                if (flow.actionSubject.hasValue())
-                    missedActions?.remove(flow.actionSubject.value) ?: numberOfUnperformedActions++
-                performMissedActions()
-            }
-        }
-        disposable = flow.actionSubject
-            .subscribeOn(Schedulers.single())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe({
-                performAction(it)
-                underlay?.apply {
-                    numberOfUnperformedActions--
-                    if (numberOfUnperformedActions == 0) onAllActionsPerformed()
-                }
-            }) { throw  it }
+    fun groundStateIsSet() {
+        performMissedActions()
     }
 
     fun eventOccurred(event: Event) {
@@ -64,14 +39,12 @@ interface FlowPerformer<F : Flow> {
 
     fun performAction(action: Action) = Unit
 
-    fun onAllActionsPerformed() = Unit
+    fun allActionsArePerformed() = Unit
 
     fun performMissedActions() {
         underlay?.apply {
-            missedActions?.apply {
-                while (true) {
-                    poll()?.let { performAction(it) } ?: break
-                }
+            while (true) {
+                missedActions?.poll()?.let { performAction(it) } ?: break
             }
             missedActions = null
         }
@@ -79,10 +52,10 @@ interface FlowPerformer<F : Flow> {
 
     fun temporarilyDetachFromFlow(cacheMissedActions: Boolean) {
         underlay?.apply {
-            if (isTemporarilyDetached) return
+            if (performerIsTemporarilyDetached) return
             disposable?.dispose()
             if (cacheMissedActions) missedActions = ConcurrentLinkedQueue()
-            isTemporarilyDetached = true
+            performerIsTemporarilyDetached = true
         }
     }
 
@@ -93,8 +66,54 @@ interface FlowPerformer<F : Flow> {
         flow.onPerformerCompletelyDetached()
     }
 
+    open class Underlay {
+        @PublishedApi
+        internal var lastPerformedAction: Action? = null
+        @PublishedApi
+        internal var numberOfUnperformedActions = 0
+        @PublishedApi
+        internal var performerIsTemporarilyDetached = false
+        @PublishedApi
+        internal var missedActions: ConcurrentLinkedQueue<Action>? = null
+    }
+
     enum class AttachmentType {
         NORMAL_ATTACHMENT,
         REPLAY_ATTACHMENT
     }
+}
+
+inline fun <F : Flow, reified U : FlowPerformer.Underlay> FlowPerformer<F, U>.attachToFlow(
+    attachmentType: FlowPerformer.AttachmentType = FlowPerformer.AttachmentType.NORMAL_ATTACHMENT
+) {
+    var isAttached = false
+    underlay
+        ?.apply {
+            if (!performerIsTemporarilyDetached) return
+            performerIsTemporarilyDetached = false
+        }
+        ?: run { underlay = U::class.java.newInstance() }
+    if (attachmentType == FlowPerformer.AttachmentType.REPLAY_ATTACHMENT)
+        flow.replay()
+    else if (!flow.actionSubject.hasValue())
+        isAttached = true
+    disposable = flow.actionSubject
+        .subscribeOn(Schedulers.single())
+        .observeOn(AndroidSchedulers.mainThread())
+        .subscribe({ action ->
+            underlay?.apply {
+                if (!isAttached) {
+                    isAttached = true
+                    if (attachmentType != FlowPerformer.AttachmentType.REPLAY_ATTACHMENT) {
+                        if (action === lastPerformedAction) return@subscribe
+                        missedActions?.remove(action) ?: numberOfUnperformedActions++
+                        performMissedActions()
+                    }
+                }
+                performAction(action)
+                lastPerformedAction = action
+                numberOfUnperformedActions--
+                if (numberOfUnperformedActions == 0) allActionsArePerformed()
+            }
+        }) { throw  it }
 }

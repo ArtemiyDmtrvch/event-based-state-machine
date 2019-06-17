@@ -6,9 +6,10 @@ import android.support.v4.app.Fragment
 import android.support.v4.app.FragmentActivity
 import ru.impression.flow_architecture.Flow
 import ru.impression.flow_architecture.FlowPerformer
+import ru.impression.flow_architecture.attachToFlow
 import ru.impression.flow_architecture.notNullName
 
-interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
+interface FlowView<F : Flow, S : Any> : FlowPerformer<F, FlowView.Underlay> {
 
     val flowViewModelClasses get() = emptyArray<Class<out FlowViewModel<F>>>()
 
@@ -17,18 +18,17 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
 
     var additionalState: S
 
-    var viewWasDestroyed
-        get() = false
-        set(_) {}
-
-    override fun attachToFlow() {
-        super.attachToFlow(
-            if (underlay?.isTemporarilyDetached == true && viewWasDestroyed)
-                FlowPerformer.AttachmentType.REPLAY_ATTACHMENT
-            else
-                FlowPerformer.AttachmentType.NORMAL_ATTACHMENT
-        )
-        flowViewModelClasses.forEach { getViewModelProvider()[it] }
+    fun attachToFlow() {
+        underlay.apply {
+            attachToFlow(
+                if (this?.performerIsTemporarilyDetached == true && viewIsDestroyed)
+                    FlowPerformer.AttachmentType.REPLAY_ATTACHMENT
+                else
+                    FlowPerformer.AttachmentType.NORMAL_ATTACHMENT
+            )
+            this?.viewIsDestroyed = false
+            flowViewModelClasses.forEach { getViewModelProvider()[it] }
+        }
     }
 
     fun getViewModelProvider(factory: ViewModelProvider.Factory? = null) =
@@ -44,11 +44,11 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
             else -> throw UnsupportedOperationException("FlowView must be either FragmentActivity or Fragment.")
         }
 
-    fun groundStateIsSet() {
+    override fun groundStateIsSet() {
         viewStateSavingViewModel.savedViewAdditionalStates
             .remove(javaClass.notNullName)
             ?.let { additionalState = it as S }
-        performMissedActions()
+        super.groundStateIsSet()
     }
 
     fun temporarilyDetachFromFlow() {
@@ -57,9 +57,8 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F> {
             ?.let { viewStateSavingViewModel.savedViewAdditionalStates.put(javaClass.notNullName, it) }
         super.temporarilyDetachFromFlow(true)
     }
-//
-//    override fun completelyDetachFromFlow() {
-//        if (!viewStateSavingViewModel.isCleared) return
-//        super.completelyDetachFromFlow()
-//    }
+
+    class Underlay : FlowPerformer.Underlay() {
+        var viewIsDestroyed = false
+    }
 }

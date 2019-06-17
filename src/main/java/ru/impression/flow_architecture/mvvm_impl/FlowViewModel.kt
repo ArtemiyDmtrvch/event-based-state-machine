@@ -8,25 +8,25 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import ru.impression.flow_architecture.Flow
 import ru.impression.flow_architecture.FlowPerformer
+import ru.impression.flow_architecture.attachToFlow
 import ru.impression.flow_architecture.notNullName
 import java.util.*
 import kotlin.concurrent.thread
 
-abstract class FlowViewModel<F : Flow>(override val groupUUID: UUID) : ViewModel(), FlowPerformer<F> {
+abstract class FlowViewModel<F : Flow>(override val groupUUID: UUID) :
+    ViewModel(), FlowPerformer<F, FlowPerformer.Underlay> {
 
     override val flow = super.flow
 
     override var disposable = super.disposable
 
-    var detachmentRequired = false
+    private var detachmentRequired = false
 
     init {
         attachToFlow()
     }
 
-    final override fun attachToFlow() = super.attachToFlow()
-
-    override fun onAllActionsPerformed() {
+    override fun allActionsArePerformed() {
         if (detachmentRequired) {
             completelyDetachFromFlow()
             detachmentRequired = true

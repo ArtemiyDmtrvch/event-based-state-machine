@@ -18,7 +18,8 @@ abstract class Flow {
     @PublishedApi
     internal var parentPerformerGroupUUID: UUID? = null
 
-    private var replayableAction: Action? = null
+    @PublishedApi
+    internal var replayableAction: Action? = null
 
     @PublishedApi
     internal val onEvents = ConcurrentHashMap<String, (Event) -> Unit>()
@@ -35,9 +36,10 @@ abstract class Flow {
     @PublishedApi
     internal val disposables = CompositeDisposable()
 
+    @PublishedApi
     internal val actionSubject = ReplaySubject.createWithSize<Action>(1)
 
-    internal val performerUnderlays = ConcurrentHashMap<String, FlowPerformerUnderlay>()
+    internal val performerUnderlays = ConcurrentHashMap<String, FlowPerformer.Underlay>()
 
     private var isReplaying = false
 
@@ -129,9 +131,11 @@ abstract class Flow {
             && !isReplaying
         ) replayableAction = action
         performerUnderlays.values.forEach {
-            if (it.isTemporarilyDetached && it.missedActions != null) {
-                it.missedActions!!.add(action)
-                it.numberOfUnperformedActions++
+            if (it.performerIsTemporarilyDetached) {
+                if (it.missedActions != null) {
+                    it.missedActions!!.add(action)
+                    it.numberOfUnperformedActions++
+                }
             } else
                 it.numberOfUnperformedActions++
         }
@@ -143,6 +147,7 @@ abstract class Flow {
             }
     }
 
+    @PublishedApi
     internal fun replay() {
         replayableAction?.let {
             isReplaying = true

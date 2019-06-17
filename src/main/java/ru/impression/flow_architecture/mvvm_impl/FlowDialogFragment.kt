@@ -20,8 +20,6 @@ abstract class FlowDialogFragment<F : Flow, S : Any>(private val isGraphical: Bo
 
     override var disposable = super.disposable
 
-    override var viewWasDestroyed = super.viewWasDestroyed
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
         if (isGraphical) FrameLayout(activity!!) else null
 
@@ -48,12 +46,12 @@ abstract class FlowDialogFragment<F : Flow, S : Any>(private val isGraphical: Bo
     }
 
     override fun onDestroyView() {
-        viewWasDestroyed = true
         super.onDestroyView()
+        underlay?.viewIsDestroyed = true
     }
 
     override fun onDestroy() {
-        completelyDetachFromFlow()
+        if (viewStateSavingViewModel.isCleared) completelyDetachFromFlow()
         super.onDestroy()
     }
 

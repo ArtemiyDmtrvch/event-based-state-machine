@@ -2,20 +2,13 @@ package ru.impression.flow_architecture
 
 import java.util.*
 
-interface PrimaryFlowPerformer<F : Flow> : FlowPerformer<F> {
+interface PrimaryFlowPerformer<F : Flow, U : FlowPerformer.Underlay> : FlowPerformer<F, U> {
 
     val flowClass: Class<F>
 
-    override var groupUUID: UUID
+    override val groupUUID: UUID get() = retrievedGroupUUID ?: UUID.randomUUID()
 
-    fun retrieveGroupUUID(): UUID? = null
+    val retrievedGroupUUID: UUID? get() = null
 
-    override val flow: F
-        get() = retrieveGroupUUID()?.let { retrievedUUID ->
-            groupUUID = retrievedUUID
-            FlowStore.get<F>(groupUUID)!!
-        } ?: run {
-            groupUUID = UUID.randomUUID()
-            FlowStore.add(flowClass, groupUUID)
-        }
+    override val flow get() = retrievedGroupUUID?.let { FlowStore.get<F>(it) } ?: FlowStore.add(flowClass, groupUUID)
 }
