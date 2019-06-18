@@ -26,7 +26,7 @@ abstract class FlowActivity<F : Flow, S : Any>(override val flowClass: Class<F>)
 
     override fun onDestroy() {
         super.onDestroy()
-        underlay?.viewIsDestroyed = true
+        underlay?.viewIsDestroyed?.set(true)
     }
 
     override fun finish() {

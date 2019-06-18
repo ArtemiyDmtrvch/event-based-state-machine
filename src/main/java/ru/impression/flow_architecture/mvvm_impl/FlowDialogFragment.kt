@@ -47,7 +47,7 @@ abstract class FlowDialogFragment<F : Flow, S : Any>(private val isGraphical: Bo
 
     override fun onDestroyView() {
         super.onDestroyView()
-        underlay?.viewIsDestroyed = true
+        underlay?.viewIsDestroyed?.set(true)
     }
 
     override fun onDestroy() {

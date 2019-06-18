@@ -7,26 +7,26 @@ import android.support.v4.app.FragmentActivity
 import ru.impression.flow_architecture.Flow
 import ru.impression.flow_architecture.FlowPerformer
 import ru.impression.flow_architecture.attachToFlow
-import ru.impression.flow_architecture.notNullName
+import java.util.concurrent.atomic.AtomicBoolean
 
 interface FlowView<F : Flow, S : Any> : FlowPerformer<F, FlowView.Underlay> {
 
     val flowViewModelClasses get() = emptyArray<Class<out FlowViewModel<F>>>()
 
     val viewStateSavingViewModel
-        get() = getViewModelProvider()[ViewStateSavingViewModel::class.java]
+        get() = getViewModelProvider()[ViewStateSavingViewModel::class.java] as ViewStateSavingViewModel<S>
 
     var additionalState: S
 
     fun attachToFlow() {
         underlay.apply {
             attachToFlow(
-                if (this?.performerIsTemporarilyDetached == true && viewIsDestroyed)
+                if (this?.performerIsTemporarilyDetached?.get() == true && viewIsDestroyed.get())
                     FlowPerformer.AttachmentType.REPLAY_ATTACHMENT
                 else
                     FlowPerformer.AttachmentType.NORMAL_ATTACHMENT
             )
-            this?.viewIsDestroyed = false
+            this?.viewIsDestroyed?.set(false)
             flowViewModelClasses.forEach { getViewModelProvider()[it] }
         }
     }
@@ -45,20 +45,19 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F, FlowView.Underlay> {
         }
 
     override fun groundStateIsSet() {
-        viewStateSavingViewModel.savedViewAdditionalStates
-            .remove(javaClass.notNullName)
-            ?.let { additionalState = it as S }
+        viewStateSavingViewModel.additionalViewState?.let { additionalState = it }
         super.groundStateIsSet()
     }
 
     fun temporarilyDetachFromFlow() {
-        additionalState
-            .takeIf { it !is Unit && it !is Nothing }
-            ?.let { viewStateSavingViewModel.savedViewAdditionalStates.put(javaClass.notNullName, it) }
+        if (underlay?.viewIsDestroyed?.get() == false)
+            additionalState
+                .takeIf { it !is Unit && it !is Nothing }
+                ?.let { viewStateSavingViewModel.additionalViewState = it }
         super.temporarilyDetachFromFlow(true)
     }
 
     class Underlay : FlowPerformer.Underlay() {
-        var viewIsDestroyed = false
+        val viewIsDestroyed = AtomicBoolean(false)
     }
 }

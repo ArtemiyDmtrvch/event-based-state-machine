@@ -5,6 +5,8 @@ import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
 
@@ -52,10 +54,11 @@ interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
 
     fun temporarilyDetachFromFlow(cacheMissedActions: Boolean) {
         underlay?.apply {
-            if (performerIsTemporarilyDetached) return
+            if (performerIsTemporarilyDetached.get()) return
             disposable?.dispose()
+            performerIsTemporarilyDetached.set(true)
+            numberOfUnperformedActions.set(0)
             if (cacheMissedActions) missedActions = ConcurrentLinkedQueue()
-            performerIsTemporarilyDetached = true
         }
     }
 
@@ -67,12 +70,14 @@ interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
     }
 
     open class Underlay {
+        @Volatile
         @PublishedApi
         internal var lastPerformedAction: Action? = null
         @PublishedApi
-        internal var numberOfUnperformedActions = 0
+        internal val numberOfUnperformedActions = AtomicInteger(0)
         @PublishedApi
-        internal var performerIsTemporarilyDetached = false
+        internal val performerIsTemporarilyDetached = AtomicBoolean(false)
+        @Volatile
         @PublishedApi
         internal var missedActions: ConcurrentLinkedQueue<Action>? = null
     }
@@ -89,8 +94,8 @@ inline fun <F : Flow, reified U : FlowPerformer.Underlay> FlowPerformer<F, U>.at
     var isAttached = false
     underlay
         ?.apply {
-            if (!performerIsTemporarilyDetached) return
-            performerIsTemporarilyDetached = false
+            if (!performerIsTemporarilyDetached.get()) return
+            performerIsTemporarilyDetached.set(false)
         }
         ?: run { underlay = U::class.java.newInstance() }
     if (attachmentType == FlowPerformer.AttachmentType.REPLAY_ATTACHMENT)
@@ -106,14 +111,13 @@ inline fun <F : Flow, reified U : FlowPerformer.Underlay> FlowPerformer<F, U>.at
                     isAttached = true
                     if (attachmentType != FlowPerformer.AttachmentType.REPLAY_ATTACHMENT) {
                         if (action === lastPerformedAction) return@subscribe
-                        missedActions?.remove(action) ?: numberOfUnperformedActions++
+                        missedActions?.remove(action) ?: numberOfUnperformedActions.incrementAndGet()
                         performMissedActions()
                     }
                 }
                 performAction(action)
                 lastPerformedAction = action
-                numberOfUnperformedActions--
-                if (numberOfUnperformedActions == 0) allActionsArePerformed()
+                if (numberOfUnperformedActions.decrementAndGet() == 0) allActionsArePerformed()
             }
         }) { throw  it }
 }

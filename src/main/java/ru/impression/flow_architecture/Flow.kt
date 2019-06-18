@@ -130,14 +130,14 @@ abstract class Flow {
         if ((action is ReplayableAction || (action is ReplayableInitiatingAction && action.flowClass == javaClass))
             && !isReplaying
         ) replayableAction = action
-        performerUnderlays.values.forEach {
-            if (it.performerIsTemporarilyDetached) {
-                if (it.missedActions != null) {
-                    it.missedActions!!.add(action)
-                    it.numberOfUnperformedActions++
+        performerUnderlays.values.forEach { underlay ->
+            if (underlay.performerIsTemporarilyDetached.get()) {
+                underlay.missedActions?.apply {
+                    add(action)
+                    underlay.numberOfUnperformedActions.incrementAndGet()
                 }
             } else
-                it.numberOfUnperformedActions++
+                underlay.numberOfUnperformedActions.incrementAndGet()
         }
         actionSubject.onNext(action)
         if (action is InitiatingAction && action.flowClass != javaClass)

@@ -34,7 +34,7 @@ abstract class FlowViewModel<F : Flow>(override val groupUUID: UUID) :
     }
 
     override fun onCleared() {
-        if (underlay?.numberOfUnperformedActions == 0)
+        if (underlay?.numberOfUnperformedActions?.get() == 0)
             completelyDetachFromFlow()
         else
             detachmentRequired = true
