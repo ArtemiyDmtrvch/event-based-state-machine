@@ -43,11 +43,13 @@ abstract class Flow {
 
     private var isReplaying = false
 
-    protected inline fun <reified E : Event> whenEventOccurs(crossinline onEvent: (E) -> Unit) {
+    abstract fun start()
+
+    inline fun <reified E : Event> whenEventOccurs(crossinline onEvent: (E) -> Unit) {
         onEvents[E::class.java.notNullName] = { onEvent(it as E) }
     }
 
-    protected inline fun <reified E1 : Event, reified E2 : Event> whenSeriesOfEventsOccur(
+    inline fun <reified E1 : Event, reified E2 : Event> whenSeriesOfEventsOccur(
         crossinline onSeriesOfEvents: (E1, E2) -> Unit
     ) {
         Observable
@@ -67,7 +69,7 @@ abstract class Flow {
             .let { disposables.add(it) }
     }
 
-    protected inline fun <reified E1 : Event, reified E2 : Event, reified E3 : Event> whenSeriesOfEventsOccur(
+    inline fun <reified E1 : Event, reified E2 : Event, reified E3 : Event> whenSeriesOfEventsOccur(
         crossinline onSeriesOfEvents: (E1, E2, E3) -> Unit
     ) {
         Observable
@@ -90,7 +92,7 @@ abstract class Flow {
             .let { disposables.add(it) }
     }
 
-    protected inline fun <reified E1 : Event, reified E2 : Event, reified E3 : Event, reified E4 : Event> whenSeriesOfEventsOccur(
+    inline fun <reified E1 : Event, reified E2 : Event, reified E3 : Event, reified E4 : Event> whenSeriesOfEventsOccur(
         crossinline onSeriesOfEvents: (E1, E2, E3, E4) -> Unit
     ) {
         Observable
@@ -126,7 +128,7 @@ abstract class Flow {
                 ?.apply { eventOccurred(event.apply { numberOfParentRecipients-- }) }
     }
 
-    protected open fun performAction(action: Action) {
+    open fun performAction(action: Action) {
         if ((action is ReplayableAction || (action is ReplayableInitiatingAction && action.flowClass == javaClass))
             && !isReplaying
         ) replayableAction = action

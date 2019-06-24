@@ -12,13 +12,16 @@ internal object FlowStore {
 
     operator fun <F : Flow> get(performerGroupUUID: UUID): F? = runningFlows[performerGroupUUID] as F?
 
-    fun <F : Flow> add(flowClass: Class<F>): F = flowClass.newInstance().also { pendingFlows.add(it) }
+    fun <F : Flow> add(flowClass: Class<F>): F =
+        flowClass.newInstance()
+            .apply { start() }
+            .also { pendingFlows.add(it) }
 
     fun <F : Flow> add(flowClass: Class<F>, performerGroupUUID: UUID): F {
         val flow = pendingFlows
             .firstOrNull { it::class.java == flowClass }
             ?.also { FlowStore.pendingFlows.remove(it) } as F?
-            ?: flowClass.newInstance()
+            ?: flowClass.newInstance().apply { start() }
         flow.performerGroupUUID = performerGroupUUID
         runningFlows[performerGroupUUID] = flow
         return flow
