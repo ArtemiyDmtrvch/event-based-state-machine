@@ -16,9 +16,6 @@ abstract class Flow {
     internal lateinit var performerGroupUUID: UUID
 
     @PublishedApi
-    internal var parentPerformerGroupUUID: UUID? = null
-
-    @PublishedApi
     internal var replayableAction: Action? = null
 
     @PublishedApi
@@ -122,10 +119,7 @@ abstract class Flow {
     internal fun eventOccurred(event: Event) {
         onEvents[event.javaClass.notNullName]?.invoke(event)
         eventSubject.onNext(event)
-        if (event is ResultingEvent && event.numberOfParentRecipients > 0)
-            parentPerformerGroupUUID
-                ?.let { FlowStore.get<Flow>(it) }
-                ?.apply { eventOccurred(event.apply { numberOfParentRecipients-- }) }
+        if (event is GlobalEvent) FlowStore.forEach { it.eventOccurred(event) }
     }
 
     open fun performAction(action: Action) {
@@ -134,19 +128,13 @@ abstract class Flow {
         ) replayableAction = action
         performerUnderlays.values.forEach { underlay ->
             if (underlay.performerIsTemporarilyDetached.get()) {
-                underlay.missedActions?.apply {
-                    add(action)
-                    underlay.numberOfUnperformedActions.incrementAndGet()
-                }
+                underlay.missedActions?.add(action)?.also { underlay.numberOfUnperformedActions.incrementAndGet() }
             } else
                 underlay.numberOfUnperformedActions.incrementAndGet()
         }
         actionSubject.onNext(action)
         if (action is InitiatingAction && action.flowClass != javaClass)
-            FlowStore.add(action.flowClass).also {
-                it.parentPerformerGroupUUID = performerGroupUUID
-                it.performAction(action)
-            }
+            FlowStore.add(action.flowClass).performAction(action)
     }
 
     @PublishedApi

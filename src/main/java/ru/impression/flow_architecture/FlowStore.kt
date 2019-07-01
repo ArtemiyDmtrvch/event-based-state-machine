@@ -4,7 +4,7 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
-internal object FlowStore {
+internal object FlowStore: Iterable<Flow> {
 
     private val pendingFlows = ConcurrentLinkedQueue<Flow>()
 
@@ -30,4 +30,6 @@ internal object FlowStore {
     fun remove(performerGroupUUID: UUID) {
         runningFlows.remove(performerGroupUUID)
     }
+
+    override fun iterator() = runningFlows.values.iterator()
 }
