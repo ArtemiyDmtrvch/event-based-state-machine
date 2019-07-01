@@ -119,7 +119,10 @@ abstract class Flow {
     internal fun eventOccurred(event: Event) {
         onEvents[event.javaClass.notNullName]?.invoke(event)
         eventSubject.onNext(event)
-        if (event is GlobalEvent) FlowStore.forEach { it.eventOccurred(event) }
+        if (event is GlobalEvent && !event.occurred) {
+            event.occurred = true
+            FlowStore.forEach { it.eventOccurred(event) }
+        }
     }
 
     open fun performAction(action: Action) {
