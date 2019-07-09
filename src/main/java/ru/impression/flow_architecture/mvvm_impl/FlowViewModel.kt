@@ -23,7 +23,7 @@ abstract class FlowViewModel<F : Flow>(override val groupUUID: UUID) :
     private var detachmentRequired = false
 
     init {
-        attachToFlow()
+        attachToFlow(Schedulers.single())
     }
 
     override fun allActionsArePerformed() {

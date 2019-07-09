@@ -1,5 +1,6 @@
 package ru.impression.flow_architecture
 
+import io.reactivex.Scheduler
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
@@ -26,6 +27,8 @@ interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
         get() = null
         set(_) {}
 
+    val initialAction get() = flow.initialAction
+
     val eventEnrichers: Array<FlowPerformer<F, U>> get() = emptyArray()
 
     fun groundStateIsSet() {
@@ -39,15 +42,13 @@ interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
 
     fun enrichEvent(event: Event) = Unit
 
-    fun performAction(action: Action) = Unit
+    fun performAction(action: Action)
 
     fun allActionsArePerformed() = Unit
 
     fun performMissedActions() {
         underlay?.apply {
-            while (true) {
-                missedActions?.poll()?.let { performAction(it) } ?: break
-            }
+            while (true) missedActions?.poll()?.let { performAction(it) } ?: break
             missedActions = null
         }
     }
@@ -89,6 +90,7 @@ interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
 }
 
 inline fun <F : Flow, reified U : FlowPerformer.Underlay> FlowPerformer<F, U>.attachToFlow(
+    subscriptionScheduler: Scheduler = AndroidSchedulers.mainThread(),
     attachmentType: FlowPerformer.AttachmentType = FlowPerformer.AttachmentType.NORMAL_ATTACHMENT
 ) {
     var isAttached = false
@@ -103,8 +105,8 @@ inline fun <F : Flow, reified U : FlowPerformer.Underlay> FlowPerformer<F, U>.at
     else if (!flow.actionSubject.hasValue())
         isAttached = true
     disposable = flow.actionSubject
-        .subscribeOn(Schedulers.single())
-        .observeOn(AndroidSchedulers.mainThread())
+        .subscribeOn(Schedulers.newThread())
+        .observeOn(subscriptionScheduler)
         .subscribe({ action ->
             underlay?.apply {
                 if (!isAttached) {

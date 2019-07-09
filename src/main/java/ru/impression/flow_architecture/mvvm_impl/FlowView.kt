@@ -21,14 +21,14 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F, FlowView.Underlay> {
     fun attachToFlow() {
         underlay.apply {
             attachToFlow(
-                if (this?.performerIsTemporarilyDetached?.get() == true && viewIsDestroyed.get())
+                attachmentType = if (this?.performerIsTemporarilyDetached?.get() == true && viewIsDestroyed.get())
                     FlowPerformer.AttachmentType.REPLAY_ATTACHMENT
                 else
                     FlowPerformer.AttachmentType.NORMAL_ATTACHMENT
             )
             this?.viewIsDestroyed?.set(false)
-            flowViewModelClasses.forEach { getViewModelProvider()[it] }
         }
+        flowViewModelClasses.forEach { getViewModelProvider()[it] }
     }
 
     fun getViewModelProvider(factory: ViewModelProvider.Factory? = null) =

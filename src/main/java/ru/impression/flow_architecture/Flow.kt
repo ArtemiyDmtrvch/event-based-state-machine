@@ -16,7 +16,7 @@ abstract class Flow {
     internal lateinit var performerGroupUUID: UUID
 
     @PublishedApi
-    internal var replayableAction: Action? = null
+    internal var initialAction: InitialAction? = null
 
     @PublishedApi
     internal val onEvents = ConcurrentHashMap<String, (Event) -> Unit>()
@@ -126,9 +126,10 @@ abstract class Flow {
     }
 
     open fun performAction(action: Action) {
-        if ((action is ReplayableAction || (action is ReplayableInitiatingAction && action.flowClass == javaClass))
+        if (action is InitialAction
+            && (action is UnilateralInitialAction || (action is BilateralInitialAction && action.flowClass == javaClass))
             && !isReplaying
-        ) replayableAction = action
+        ) initialAction = action
         performerUnderlays.values.forEach { underlay ->
             if (underlay.performerIsTemporarilyDetached.get()) {
                 underlay.missedActions?.add(action)?.also { underlay.numberOfUnperformedActions.incrementAndGet() }
@@ -136,13 +137,13 @@ abstract class Flow {
                 underlay.numberOfUnperformedActions.incrementAndGet()
         }
         actionSubject.onNext(action)
-        if (action is InitiatingAction && action.flowClass != javaClass)
+        if (action is BilateralInitialAction && action.flowClass != javaClass)
             FlowStore.add(action.flowClass).performAction(action)
     }
 
     @PublishedApi
     internal fun replay() {
-        replayableAction?.let {
+        initialAction?.let {
             isReplaying = true
             performAction(it)
             isReplaying = false
