@@ -1,7 +1,5 @@
 package ru.impression.flow_architecture
 
-import io.reactivex.Scheduler
-import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import java.util.*
@@ -22,6 +20,8 @@ interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
                 ?.let { flow.performerUnderlays[javaClass.notNullName] = it }
                 ?: flow.performerUnderlays.remove(javaClass.notNullName)
         }
+
+    val observingScheduler get() = Schedulers.single()
 
     var disposable: Disposable?
         get() = null
@@ -90,7 +90,6 @@ interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
 }
 
 inline fun <F : Flow, reified U : FlowPerformer.Underlay> FlowPerformer<F, U>.attachToFlow(
-    subscriptionScheduler: Scheduler = AndroidSchedulers.mainThread(),
     attachmentType: FlowPerformer.AttachmentType = FlowPerformer.AttachmentType.NORMAL_ATTACHMENT
 ) {
     var isAttached = false
@@ -106,7 +105,7 @@ inline fun <F : Flow, reified U : FlowPerformer.Underlay> FlowPerformer<F, U>.at
         isAttached = true
     disposable = flow.actionSubject
         .subscribeOn(Schedulers.newThread())
-        .observeOn(subscriptionScheduler)
+        .observeOn(observingScheduler)
         .subscribe({ action ->
             underlay?.apply {
                 if (!isAttached) {

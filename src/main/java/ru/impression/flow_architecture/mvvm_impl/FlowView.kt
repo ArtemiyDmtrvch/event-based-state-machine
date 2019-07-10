@@ -4,6 +4,8 @@ import android.arch.lifecycle.ViewModelProvider
 import android.arch.lifecycle.ViewModelProviders
 import android.support.v4.app.Fragment
 import android.support.v4.app.FragmentActivity
+import io.reactivex.Scheduler
+import io.reactivex.android.schedulers.AndroidSchedulers
 import ru.impression.flow_architecture.Flow
 import ru.impression.flow_architecture.FlowPerformer
 import ru.impression.flow_architecture.attachToFlow
@@ -18,10 +20,12 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F, FlowView.Underlay> {
 
     var additionalState: S
 
+    override val observingScheduler: Scheduler get() = AndroidSchedulers.mainThread()
+
     fun attachToFlow() {
         underlay.apply {
             attachToFlow(
-                attachmentType = if (this?.performerIsTemporarilyDetached?.get() == true && viewIsDestroyed.get())
+                if (this?.performerIsTemporarilyDetached?.get() == true && viewIsDestroyed.get())
                     FlowPerformer.AttachmentType.REPLAY_ATTACHMENT
                 else
                     FlowPerformer.AttachmentType.NORMAL_ATTACHMENT
