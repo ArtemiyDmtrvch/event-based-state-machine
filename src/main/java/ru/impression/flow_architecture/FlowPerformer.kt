@@ -93,15 +93,20 @@ inline fun <F : Flow, reified U : FlowPerformer.Underlay> FlowPerformer<F, U>.at
     attachmentType: FlowPerformer.AttachmentType = FlowPerformer.AttachmentType.NORMAL_ATTACHMENT
 ) {
     var isAttached = false
+    val isPrimaryPerformer = this is PrimaryFlowPerformer<F, U>
     underlay
         ?.apply {
             if (!performerIsTemporarilyDetached.get()) return
             performerIsTemporarilyDetached.set(false)
         }
-        ?: run { underlay = U::class.java.newInstance() }
-    if (attachmentType == FlowPerformer.AttachmentType.REPLAY_ATTACHMENT)
+        ?: run {
+            underlay = U::class.java.newInstance()
+            if (isPrimaryPerformer) flow.isInitialized.set(false)
+        }
+    if (attachmentType == FlowPerformer.AttachmentType.REPLAY_ATTACHMENT) {
+        if (isPrimaryPerformer) flow.isInitialized.set(false)
         flow.replay()
-    else if (!flow.actionSubject.hasValue())
+    } else if (!flow.actionSubject.hasValue())
         isAttached = true
     disposable = flow.actionSubject
         .subscribeOn(Schedulers.newThread())
@@ -109,16 +114,17 @@ inline fun <F : Flow, reified U : FlowPerformer.Underlay> FlowPerformer<F, U>.at
         .subscribe({ action ->
             underlay?.apply {
                 if (!isAttached) {
-                    isAttached = true
                     if (attachmentType != FlowPerformer.AttachmentType.REPLAY_ATTACHMENT) {
                         if (action === lastPerformedAction) return@subscribe
                         missedActions?.remove(action) ?: numberOfUnperformedActions.incrementAndGet()
                         performMissedActions()
                     }
+                    isAttached = true
                 }
                 performAction(action)
                 lastPerformedAction = action
                 if (numberOfUnperformedActions.decrementAndGet() == 0) allActionsArePerformed()
+                if (action === initialAction && isPrimaryPerformer) flow.initializationCompleted()
             }
         }) { throw  it }
 }

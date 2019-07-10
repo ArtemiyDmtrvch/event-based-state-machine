@@ -10,6 +10,8 @@ import io.reactivex.subjects.PublishSubject
 import io.reactivex.subjects.ReplaySubject
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicBoolean
 
 abstract class Flow {
 
@@ -17,6 +19,9 @@ abstract class Flow {
 
     @PublishedApi
     internal var initialAction: InitialAction? = null
+
+    @PublishedApi
+    internal val isInitialized = AtomicBoolean(false)
 
     @PublishedApi
     internal val onEvents = ConcurrentHashMap<String, (Event) -> Unit>()
@@ -35,6 +40,8 @@ abstract class Flow {
 
     @PublishedApi
     internal val actionSubject = ReplaySubject.createWithSize<Action>(1)
+
+    private val pendingEvents = ConcurrentLinkedQueue<Event>()
 
     internal val performerUnderlays = ConcurrentHashMap<String, FlowPerformer.Underlay>()
 
@@ -116,13 +123,22 @@ abstract class Flow {
     }
 
     @PublishedApi
+    internal fun initializationCompleted() {
+        isInitialized.set(true)
+        while (true) pendingEvents.poll()?.let { eventOccurred(it) } ?: break
+    }
+
+    @PublishedApi
     internal fun eventOccurred(event: Event) {
-        onEvents[event.javaClass.notNullName]?.invoke(event)
-        eventSubject.onNext(event)
-        if (event is GlobalEvent && !event.occurred) {
-            event.occurred = true
-            FlowStore.forEach { it.eventOccurred(event) }
-        }
+        if (isInitialized.get()) {
+            onEvents[event.javaClass.notNullName]?.invoke(event)
+            eventSubject.onNext(event)
+            if (event is GlobalEvent && !event.occurred) {
+                event.occurred = true
+                FlowStore.forEach { it.eventOccurred(event) }
+            }
+        } else
+            pendingEvents.add(event)
     }
 
     open fun performAction(action: Action) {
