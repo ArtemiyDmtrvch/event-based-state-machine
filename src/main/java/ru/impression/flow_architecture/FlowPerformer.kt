@@ -44,7 +44,7 @@ interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
 
     fun performAction(action: Action)
 
-    fun allActionsArePerformed() = Unit
+    fun onAllActionsPerformed() = Unit
 
     fun performMissedActions() {
         underlay?.apply {
@@ -93,20 +93,15 @@ inline fun <F : Flow, reified U : FlowPerformer.Underlay> FlowPerformer<F, U>.at
     attachmentType: FlowPerformer.AttachmentType = FlowPerformer.AttachmentType.NORMAL_ATTACHMENT
 ) {
     var isAttached = false
-    val isPrimaryPerformer = this is PrimaryFlowPerformer<F, U>
     underlay
         ?.apply {
             if (!performerIsTemporarilyDetached.get()) return
             performerIsTemporarilyDetached.set(false)
         }
-        ?: run {
-            underlay = U::class.java.newInstance()
-            if (isPrimaryPerformer) flow.isInitialized.set(false)
-        }
-    if (attachmentType == FlowPerformer.AttachmentType.REPLAY_ATTACHMENT) {
-        if (isPrimaryPerformer) flow.isInitialized.set(false)
+        ?: run { underlay = U::class.java.newInstance() }
+    if (attachmentType == FlowPerformer.AttachmentType.REPLAY_ATTACHMENT)
         flow.replay()
-    } else if (!flow.actionSubject.hasValue())
+    else if (!flow.actionSubject.hasValue())
         isAttached = true
     disposable = flow.actionSubject
         .subscribeOn(Schedulers.newThread())
@@ -123,8 +118,9 @@ inline fun <F : Flow, reified U : FlowPerformer.Underlay> FlowPerformer<F, U>.at
                 }
                 performAction(action)
                 lastPerformedAction = action
-                if (numberOfUnperformedActions.decrementAndGet() == 0) allActionsArePerformed()
-                if (action === initialAction && isPrimaryPerformer) flow.initializationCompleted()
+                if (numberOfUnperformedActions.decrementAndGet() == 0) onAllActionsPerformed()
+                if (action === initialAction && this is PrimaryFlowPerformer<*, *>)
+                    flow.onPrimaryInitializationCompleted()
             }
         }) { throw  it }
 }

@@ -20,8 +20,10 @@ abstract class Flow {
     @PublishedApi
     internal var initialAction: InitialAction? = null
 
+    private val primaryInitializationCompleted = AtomicBoolean(false)
+
     @PublishedApi
-    internal val isInitialized = AtomicBoolean(false)
+    internal val actionSubject = ReplaySubject.createWithSize<Action>(1)
 
     @PublishedApi
     internal val onEvents = ConcurrentHashMap<String, (Event) -> Unit>()
@@ -37,9 +39,6 @@ abstract class Flow {
 
     @PublishedApi
     internal val disposables = CompositeDisposable()
-
-    @PublishedApi
-    internal val actionSubject = ReplaySubject.createWithSize<Action>(1)
 
     private val pendingEvents = ConcurrentLinkedQueue<Event>()
 
@@ -123,14 +122,8 @@ abstract class Flow {
     }
 
     @PublishedApi
-    internal fun initializationCompleted() {
-        isInitialized.set(true)
-        while (true) pendingEvents.poll()?.let { eventOccurred(it) } ?: break
-    }
-
-    @PublishedApi
     internal fun eventOccurred(event: Event) {
-        if (isInitialized.get()) {
+        if (primaryInitializationCompleted.get()) {
             onEvents[event.javaClass.notNullName]?.invoke(event)
             eventSubject.onNext(event)
             if (event is GlobalEvent && !event.occurred) {
@@ -146,6 +139,7 @@ abstract class Flow {
             && (action is UnilateralInitialAction || (action is BilateralInitialAction && action.flowClass == javaClass))
             && !isReplaying
         ) initialAction = action
+        if (action === initialAction) primaryInitializationCompleted.set(false)
         performerUnderlays.values.forEach { underlay ->
             if (underlay.performerIsTemporarilyDetached.get()) {
                 underlay.missedActions?.add(action)?.also { underlay.numberOfUnperformedActions.incrementAndGet() }
@@ -155,6 +149,12 @@ abstract class Flow {
         actionSubject.onNext(action)
         if (action is BilateralInitialAction && action.flowClass != javaClass)
             FlowStore.add(action.flowClass).performAction(action)
+    }
+
+    @PublishedApi
+    internal fun onPrimaryInitializationCompleted() {
+        primaryInitializationCompleted.set(true)
+        while (true) pendingEvents.poll()?.let { eventOccurred(it) } ?: break
     }
 
     @PublishedApi
