@@ -6,16 +6,18 @@ import ru.impression.flow_architecture.FlowPerformer
 import ru.impression.flow_architecture.attachToFlow
 import java.util.*
 
-abstract class FlowViewModel<F : Flow>(override val groupUUID: UUID) :
+abstract class FlowViewModel<F : Flow> :
     ViewModel(), FlowPerformer<F, FlowPerformer.Underlay> {
 
-    override val flow = super.flow
+    override lateinit var groupUUID: UUID
+
+    override val flow by lazy { super.flow }
 
     override var disposable = super.disposable
 
     private var detachmentRequired = false
 
-    init {
+    fun init() {
         attachToFlow()
     }
 

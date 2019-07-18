@@ -10,5 +10,8 @@ interface PrimaryFlowPerformer<F : Flow, U : FlowPerformer.Underlay> : FlowPerfo
 
     val retrievedGroupUUID: UUID? get() = null
 
-    override val flow get() = retrievedGroupUUID?.let { FlowStore.get<F>(it) } ?: FlowStore.add(flowClass, groupUUID)
+    override val flow
+        get() = retrievedGroupUUID
+            ?.let { FlowStore.get<F>(it) }
+            ?: FlowStore.newEntry(groupUUID, flowClass)
 }

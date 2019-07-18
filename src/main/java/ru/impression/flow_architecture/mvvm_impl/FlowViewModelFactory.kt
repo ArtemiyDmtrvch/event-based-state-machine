@@ -9,14 +9,14 @@ class FlowViewModelFactory(private val application: Application, private val per
     ViewModelProvider.AndroidViewModelFactory(application) {
 
     override fun <T : ViewModel?> create(modelClass: Class<T>): T =
-        when {
-            FlowAndroidViewModel::class.java.isAssignableFrom(modelClass) ->
-                modelClass
-                    .getConstructor(Application::class.java, UUID::class.java)
-                    .newInstance(application, performerGroupUUID)
-            FlowViewModel::class.java.isAssignableFrom(modelClass)
-                    || ViewStateSavingViewModel::class.java.isAssignableFrom(modelClass) ->
-                modelClass.getConstructor(UUID::class.java).newInstance(performerGroupUUID)
-            else -> super.create(modelClass)
+        modelClass.newInstance().apply {
+            when (this) {
+                is FlowViewModel<*> -> {
+                    groupUUID = performerGroupUUID
+                    if (this is FlowAndroidViewModel<*>) application = this@FlowViewModelFactory.application
+                    init()
+                }
+                is ViewStateSavingViewModel<*> -> performerGroupUUID = this@FlowViewModelFactory.performerGroupUUID
+            }
         }
 }

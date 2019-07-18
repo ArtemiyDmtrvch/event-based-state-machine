@@ -93,6 +93,7 @@ inline fun <F : Flow, reified U : FlowPerformer.Underlay> FlowPerformer<F, U>.at
     attachmentType: FlowPerformer.AttachmentType = FlowPerformer.AttachmentType.NORMAL_ATTACHMENT
 ) {
     var isAttached = false
+    val isPrimaryPerformer = this is PrimaryFlowPerformer<F, U>
     underlay
         ?.apply {
             if (!performerIsTemporarilyDetached.get()) return
@@ -119,7 +120,7 @@ inline fun <F : Flow, reified U : FlowPerformer.Underlay> FlowPerformer<F, U>.at
                 performAction(action)
                 lastPerformedAction = action
                 if (numberOfUnperformedActions.decrementAndGet() == 0) onAllActionsPerformed()
-                if (action === initialAction && this is PrimaryFlowPerformer<*, *>)
+                if (action === initialAction && isPrimaryPerformer)
                     flow.onPrimaryInitializationCompleted()
             }
         }) { throw  it }

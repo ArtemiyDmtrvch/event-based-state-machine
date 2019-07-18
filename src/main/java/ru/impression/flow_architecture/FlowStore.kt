@@ -4,7 +4,7 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
-internal object FlowStore: Iterable<Flow> {
+internal object FlowStore : Iterable<Flow> {
 
     private val pendingFlows = ConcurrentLinkedQueue<Flow>()
 
@@ -12,12 +12,12 @@ internal object FlowStore: Iterable<Flow> {
 
     operator fun <F : Flow> get(performerGroupUUID: UUID): F? = runningFlows[performerGroupUUID] as F?
 
-    fun <F : Flow> add(flowClass: Class<F>): F =
+    fun <F : Flow> newPendingEntry(flowClass: Class<F>): F =
         flowClass.newInstance()
             .apply { start() }
             .also { pendingFlows.add(it) }
 
-    fun <F : Flow> add(flowClass: Class<F>, performerGroupUUID: UUID): F {
+    fun <F : Flow> newEntry(performerGroupUUID: UUID, flowClass: Class<F>): F {
         val flow = pendingFlows
             .firstOrNull { it::class.java == flowClass }
             ?.also { FlowStore.pendingFlows.remove(it) } as F?

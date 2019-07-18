@@ -26,7 +26,7 @@ abstract class Flow {
     internal val actionSubject = ReplaySubject.createWithSize<Action>(1)
 
     @PublishedApi
-    internal val onEvents = ConcurrentHashMap<String, (Event) -> Unit>()
+    internal val onEvents = ConcurrentLinkedQueue<(Event) -> Unit>()
 
     @PublishedApi
     internal val eventSubject = PublishSubject.create<Event>()
@@ -49,7 +49,7 @@ abstract class Flow {
     abstract fun start()
 
     inline fun <reified E : Event> whenEventOccurs(crossinline onEvent: (E) -> Unit) {
-        onEvents[E::class.java.notNullName] = { onEvent(it as E) }
+        onEvents.add { if (it is E) onEvent(it) }
     }
 
     inline fun <reified E1 : Event, reified E2 : Event> whenSeriesOfEventsOccur(
@@ -124,7 +124,7 @@ abstract class Flow {
     @PublishedApi
     internal fun eventOccurred(event: Event) {
         if (primaryInitializationCompleted.get()) {
-            onEvents[event.javaClass.notNullName]?.invoke(event)
+            onEvents.forEach { it(event) }
             eventSubject.onNext(event)
             if (event is GlobalEvent && !event.occurred) {
                 event.occurred = true
@@ -136,7 +136,8 @@ abstract class Flow {
 
     open fun performAction(action: Action) {
         if (action is InitialAction
-            && (action is UnilateralInitialAction || (action is BilateralInitialAction && action.flowClass == javaClass))
+            && (action is UnilateralInitialAction
+                    || (action is BilateralInitialAction && action.flowClass == javaClass))
             && !isReplaying
         ) initialAction = action
         if (action === initialAction) primaryInitializationCompleted.set(false)
@@ -148,7 +149,7 @@ abstract class Flow {
         }
         actionSubject.onNext(action)
         if (action is BilateralInitialAction && action.flowClass != javaClass)
-            FlowStore.add(action.flowClass).performAction(action)
+            FlowStore.newPendingEntry(action.flowClass).performAction(action)
     }
 
     @PublishedApi
