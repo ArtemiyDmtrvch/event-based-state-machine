@@ -32,10 +32,10 @@ abstract class Flow {
     internal val eventSubject = PublishSubject.create<Event>()
 
     @PublishedApi
-    internal val subscriptionScheduler = Schedulers.io()
+    internal val eventSeriesSubscriptionScheduler = Schedulers.io()
 
     @PublishedApi
-    internal val observingScheduler = Schedulers.single()
+    internal val eventSeriesObservingScheduler = Schedulers.single()
 
     @PublishedApi
     internal val disposables = CompositeDisposable()
@@ -65,8 +65,8 @@ abstract class Flow {
                     .map { it as E2 },
                 BiFunction<E1, E2, Unit> { e1, e2 -> onSeriesOfEvents(e1, e2) }
             )
-            .subscribeOn(subscriptionScheduler)
-            .observeOn(observingScheduler)
+            .subscribeOn(eventSeriesSubscriptionScheduler)
+            .observeOn(eventSeriesObservingScheduler)
             .doOnError { throw it }
             .subscribe()
             .let { disposables.add(it) }
@@ -88,8 +88,8 @@ abstract class Flow {
                     .map { it as E3 },
                 Function3<E1, E2, E3, Unit> { e1, e2, e3 -> onSeriesOfEvents(e1, e2, e3) }
             )
-            .subscribeOn(subscriptionScheduler)
-            .observeOn(observingScheduler)
+            .subscribeOn(eventSeriesSubscriptionScheduler)
+            .observeOn(eventSeriesObservingScheduler)
             .doOnError { throw it }
             .subscribe()
             .let { disposables.add(it) }
@@ -114,8 +114,8 @@ abstract class Flow {
                     .map { it as E4 },
                 Function4<E1, E2, E3, E4, Unit> { e1, e2, e3, e4 -> onSeriesOfEvents(e1, e2, e3, e4) }
             )
-            .subscribeOn(subscriptionScheduler)
-            .observeOn(observingScheduler)
+            .subscribeOn(eventSeriesSubscriptionScheduler)
+            .observeOn(eventSeriesObservingScheduler)
             .doOnError { throw it }
             .subscribe()
             .let { disposables.add(it) }

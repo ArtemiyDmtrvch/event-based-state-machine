@@ -24,7 +24,6 @@ abstract class FlowViewModel<F : Flow> :
     override fun onAllActionsPerformed() {
         if (detachmentRequired) {
             completelyDetachFromFlow()
-            detachmentRequired = true
         }
     }
 
