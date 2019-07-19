@@ -30,7 +30,6 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F, FlowView.Underlay> {
                 else
                     FlowPerformer.AttachmentType.NORMAL_ATTACHMENT
             )
-            this?.viewIsDestroyed?.set(false)
         }
         flowViewModelClasses.forEach { getViewModelProvider()[it] }
     }
@@ -62,6 +61,6 @@ interface FlowView<F : Flow, S : Any> : FlowPerformer<F, FlowView.Underlay> {
     }
 
     class Underlay : FlowPerformer.Underlay() {
-        val viewIsDestroyed = AtomicBoolean(false)
+        val viewIsDestroyed = AtomicBoolean(true)
     }
 }

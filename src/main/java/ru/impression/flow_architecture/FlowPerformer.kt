@@ -2,6 +2,7 @@ package ru.impression.flow_architecture
 
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
+import ru.impression.flow_architecture.mvvm_impl.FlowView
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
@@ -124,7 +125,10 @@ inline fun <F : Flow, reified U : FlowPerformer.Underlay> FlowPerformer<F, U>.at
                 performAction(action)
                 lastPerformedAction = action
                 if (numberOfUnperformedActions.decrementAndGet() == 0) allActionsArePerformed()
-                if (action === initialAction && isPrimaryPerformer) flow.initializationCompleted()
+                if (action === initialAction) {
+                    if (isPrimaryPerformer) flow.initializationCompleted()
+                    if (this is FlowView.Underlay) viewIsDestroyed.set(false)
+                }
             }
         }) { throw  it }
 }
