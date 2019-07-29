@@ -1,9 +1,9 @@
 package ru.impression.flow_architecture.mvvm_impl
 
-import android.support.v4.app.FragmentActivity
+import androidx.appcompat.app.AppCompatActivity
 import ru.impression.flow_architecture.Flow
 
-abstract class FlowActivity<F : Flow, S : Any>(override val flowClass: Class<F>) : FragmentActivity(),
+abstract class FlowActivity<F : Flow, S : Any>(override val flowClass: Class<F>) : AppCompatActivity(),
     PrimaryFlowView<F, S> {
 
     override val groupUUID by lazy { super.groupUUID }

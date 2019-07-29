@@ -1,11 +1,11 @@
 package ru.impression.flow_architecture.mvvm_impl
 
 import android.os.Bundle
-import android.support.v4.app.DialogFragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.fragment.app.DialogFragment
 import ru.impression.flow_architecture.Flow
 import java.util.*
 
