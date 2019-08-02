@@ -29,14 +29,11 @@ interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
 
     val initialAction get() = flow.initialAction
 
-    val eventEnrichers: Array<FlowPerformer<F, U>> get() = emptyArray()
-
     fun groundStateIsSet() {
         performMissedActions()
     }
 
     fun eventOccurred(event: Event) {
-        eventEnrichers.forEach { it.enrichEvent(event) }
         flow.eventOccurred(event)
     }
 

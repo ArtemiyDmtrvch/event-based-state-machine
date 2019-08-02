@@ -142,9 +142,9 @@ abstract class Flow {
         ) initialAction = action
         if (action === initialAction) primaryInitializationCompleted.set(false)
         performerUnderlays.values.forEach { underlay ->
-            if (underlay.performerIsTemporarilyDetached.get()) {
+            if (underlay.performerIsTemporarilyDetached.get())
                 underlay.missedActions?.add(action)?.also { underlay.numberOfUnperformedActions.incrementAndGet() }
-            } else
+            else
                 underlay.numberOfUnperformedActions.incrementAndGet()
         }
         actionSubject.onNext(action)
