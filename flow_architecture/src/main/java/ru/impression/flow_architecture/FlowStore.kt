@@ -20,7 +20,7 @@ internal object FlowStore : Iterable<Flow> {
     fun <F : Flow> newEntry(performerGroupUUID: UUID, flowClass: Class<F>): F {
         val flow = pendingFlows
             .firstOrNull { it::class.java == flowClass }
-            ?.also { FlowStore.pendingFlows.remove(it) } as F?
+            ?.also { pendingFlows.remove(it) } as F?
             ?: flowClass.newInstance().apply { start() }
         flow.performerGroupUUID = performerGroupUUID
         runningFlows[performerGroupUUID] = flow

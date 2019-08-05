@@ -2,7 +2,8 @@ package ru.impression.flow_architecture
 
 import java.util.*
 
-interface PrimaryFlowPerformer<F : Flow, U : FlowPerformer.Underlay> : FlowPerformer<F, U> {
+interface PrimaryFlowPerformer<F : Flow, U : FlowPerformer.Underlay> :
+    FlowPerformer<F, U> {
 
     val flowClass: Class<F>
 

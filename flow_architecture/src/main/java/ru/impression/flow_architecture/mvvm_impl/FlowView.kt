@@ -11,7 +11,8 @@ import ru.impression.flow_architecture.FlowPerformer
 import ru.impression.flow_architecture.attachToFlow
 import java.util.concurrent.atomic.AtomicBoolean
 
-interface FlowView<F : Flow, S : Any> : FlowPerformer<F, FlowView.Underlay> {
+interface FlowView<F : Flow, S : Any> :
+    FlowPerformer<F, FlowView.Underlay> {
 
     val flowViewModelClasses get() = emptyArray<Class<out FlowViewModel<F>>>()
 

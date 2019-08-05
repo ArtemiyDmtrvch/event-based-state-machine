@@ -7,7 +7,8 @@ import ru.impression.flow_architecture.attachToFlow
 import java.util.*
 
 abstract class FlowViewModel<F : Flow> :
-    ViewModel(), FlowPerformer<F, FlowPerformer.Underlay> {
+    ViewModel(),
+    FlowPerformer<F, FlowPerformer.Underlay> {
 
     override lateinit var groupUUID: UUID
 

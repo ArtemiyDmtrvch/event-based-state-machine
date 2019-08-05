@@ -10,42 +10,9 @@ buildscript {
     }
 }
 
-plugins {
-    id "com.github.dcendents.android-maven" version "2.0"
-}
-
-apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
-
-android {
-    compileSdkVersion 28
-    defaultConfig {
-        minSdkVersion 16
-        targetSdkVersion 28
-    }
-}
-
 allprojects {
     repositories {
         google()
         jcenter()
-    }
-}
-
-dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation "io.reactivex.rxjava2:rxjava:2.2.6"
-    implementation "io.reactivex.rxjava2:rxandroid:2.1.1"
-    api "androidx.appcompat:appcompat:1.0.2"
-    api "android.arch.lifecycle:extensions:1.1.1"
-    api "android.arch.lifecycle:viewmodel:1.1.1"
-}
-
-install {
-    repositories.mavenInstaller {
-        pom.groupId = 'com.github.ArtemiyDmtrvch'
-        pom.version = 'LOCAL'
-        pom.artifactId = 'flow-architecture'
     }
 }
