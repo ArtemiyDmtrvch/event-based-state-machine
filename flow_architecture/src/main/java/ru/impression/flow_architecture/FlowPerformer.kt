@@ -29,6 +29,8 @@ interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
 
     val initialAction get() = flow.initialAction
 
+    fun onFlowInitializationFailure() = Unit
+
     fun groundStateIsSet() {
         performMissedActions()
     }
@@ -42,7 +44,7 @@ interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
     fun performAction(action: Action)
 
     fun onInitialActionPerformed() {
-        if (this is PrimaryFlowPerformer<F, U>) flow.onPrimaryInitializationCompleted()
+        if (this is PrimaryFlowPerformer<F, U>) flow.onPrimaryPerformerInitializationCompleted()
     }
 
     fun onAllActionsPerformed() = Unit
@@ -100,6 +102,7 @@ inline fun <F : Flow, reified U : FlowPerformer.Underlay> FlowPerformer<F, U>.at
             performerIsTemporarilyDetached.set(false)
         }
         ?: run { underlay = U::class.java.newInstance() }
+    initialAction ?: onFlowInitializationFailure()
     if (attachmentType == FlowPerformer.AttachmentType.REPLAY_ATTACHMENT)
         flow.replay()
     else if (!flow.actionSubject.hasValue())

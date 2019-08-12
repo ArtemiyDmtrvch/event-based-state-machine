@@ -20,7 +20,7 @@ abstract class Flow {
     @PublishedApi
     internal var initialAction: InitialAction? = null
 
-    private val primaryInitializationCompleted = AtomicBoolean(false)
+    private val primaryPerformerInitializationCompleted = AtomicBoolean(false)
 
     @PublishedApi
     internal val actionSubject = ReplaySubject.createWithSize<Action>(1)
@@ -123,7 +123,7 @@ abstract class Flow {
 
     @PublishedApi
     internal fun eventOccurred(event: Event) {
-        if (primaryInitializationCompleted.get()) {
+        if (primaryPerformerInitializationCompleted.get()) {
             onEvents.forEach { it(event) }
             eventSubject.onNext(event)
             if (event is GlobalEvent && !event.occurred) {
@@ -140,7 +140,7 @@ abstract class Flow {
                     || (action is BilateralInitialAction && action.flowClass == javaClass))
             && !isReplaying
         ) initialAction = action
-        if (action === initialAction) primaryInitializationCompleted.set(false)
+        if (action === initialAction) primaryPerformerInitializationCompleted.set(false)
         performerUnderlays.values.forEach { underlay ->
             if (underlay.performerIsTemporarilyDetached.get())
                 underlay.missedActions?.add(action)?.also { underlay.numberOfUnperformedActions.incrementAndGet() }
@@ -153,8 +153,8 @@ abstract class Flow {
     }
 
     @PublishedApi
-    internal fun onPrimaryInitializationCompleted() {
-        primaryInitializationCompleted.set(true)
+    internal fun onPrimaryPerformerInitializationCompleted() {
+        primaryPerformerInitializationCompleted.set(true)
         while (true) pendingEvents.poll()?.let { eventOccurred(it) } ?: break
     }
 
