@@ -13,11 +13,43 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
+/**
+ * The main class of the library with which you describe the entire business logic of your application according to the
+ * principle: an [Event] has occurred -> perform an [Action]. Inherit from this class, override the [start] method,
+ * inside which create "event -> action" blocks using [whenEventOccurs], [whenSeriesOfEventsOccur] and [performAction]
+ * methods. If your Flow was not launched from another Flow using [BilateralInitialAction], you need to perform
+ * [UnilateralInitialAction] before the "event -> action" blocks. As a result, you get something like this:
+ * <pre>
+ * `class MyAppFlow : Flow() {
+ *
+ *      override fun start() {
+ *           performAction(NavigateToMainPage())
+ *
+ *           whenEventOccurs<NavigationToMainPageCompleted> { performAction(LoadData()) }
+ *
+ *           whenEventOccurs<DataLoaded> { performAction(ShowData(it.data)) }
+ *      }
+ * }
+ *
+ * class NavigateToMainPage : UnilateralInitialAction()
+ *
+ * class NavigationToMainPageCompleted : Event()
+ * class LoadData : Action()
+ *
+ * class DataLoaded(val data: Array<String>) : Event()
+ * class ShowData(val data: Array<String>) : Action()`
+ * </pre>
+ *
+ * NOTE that Flow should not contain any state and no logic other than the one described above. The flow should be
+ * considered as a reflector - events fall into it and are reflected in the form of actions.
+ */
 abstract class Flow {
 
+    @Volatile
     internal lateinit var performerGroupUUID: UUID
 
     @PublishedApi
+    @Volatile
     internal var initialAction: InitialAction? = null
 
     private val primaryPerformerInitializationCompleted = AtomicBoolean(false)
@@ -44,7 +76,7 @@ abstract class Flow {
 
     internal val performerUnderlays = ConcurrentHashMap<String, FlowPerformer.Underlay>()
 
-    private var isReplaying = false
+    private val isReplaying = AtomicBoolean(false)
 
     abstract fun start()
 
@@ -138,7 +170,7 @@ abstract class Flow {
         if (action is InitialAction
             && (action is UnilateralInitialAction
                     || (action is BilateralInitialAction && action.flowClass == javaClass))
-            && !isReplaying
+            && !isReplaying.get()
         ) initialAction = action
         if (action === initialAction) primaryPerformerInitializationCompleted.set(false)
         performerUnderlays.values.forEach { underlay ->
@@ -161,9 +193,9 @@ abstract class Flow {
     @PublishedApi
     internal fun replay() {
         initialAction?.let {
-            isReplaying = true
+            isReplaying.set(true)
             performAction(it)
-            isReplaying = false
+            isReplaying.set(false)
         }
     }
 
