@@ -14,30 +14,30 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * The main class of the library with which you describe the entire business logic of your application according to the
- * principle: an [Event] has occurred -> perform an [Action]. Inherit from this class, override the [start] method,
- * inside which create "event -> action" blocks using [whenEventOccurs], [whenSeriesOfEventsOccur] and [performAction]
- * methods. If your Flow was not launched from another Flow using [BilateralInitialAction], you need to perform
+ * The main class of the library, which contains all the business logic of the application, described by the principle:
+ * an [Event] has occurred -> perform an [Action]. Inherit from this class, override the [start] method, inside which
+ * create "event -> action" blocks using [whenEventOccurs], [whenSeriesOfEventsOccur] and [performAction] methods. If
+ * your Flow was not launched from another Flow using [BilateralInitialAction], you need to perform
  * [UnilateralInitialAction] before the "event -> action" blocks. As a result, you get something like this:
  * <pre>
- * `class MyAppFlow : Flow() {
+ * `class MyAwesomePageFlow : Flow() {
  *
  *      override fun start() {
- *           performAction(NavigateToMainPage())
+ *           performAction(OpenMyAwesomePage())
  *
- *           whenEventOccurs<NavigationToMainPageCompleted> { performAction(LoadData()) }
+ *           whenEventOccurs<MyAwesomePageOpened> { performAction(LoadMyAwesomeData()) }
  *
- *           whenEventOccurs<DataLoaded> { performAction(ShowData(it.data)) }
+ *           whenEventOccurs<MyAwesomeDataLoaded> { performAction(ShowMyAwesomeData(it.data)) }
  *      }
  * }
  *
- * class NavigateToMainPage : UnilateralInitialAction()
+ * class OpenMyAwesomePage : UnilateralInitialAction()
  *
- * class NavigationToMainPageCompleted : Event()
- * class LoadData : Action()
+ * class MyAwesomePageOpened : Event()
+ * class LoadMyAwesomeData : Action()
  *
- * class DataLoaded(val data: Array<String>) : Event()
- * class ShowData(val data: Array<String>) : Action()`
+ * class DataMyAwesomeLoaded(val data: Array<String>) : Event()
+ * class ShowMyAwesomeData(val data: Array<String>) : Action()`
  * </pre>
  *
  * NOTE that Flow should not contain any state and no logic other than the one described above. The flow should be
@@ -78,12 +78,60 @@ abstract class Flow {
 
     private val isReplaying = AtomicBoolean(false)
 
+    /**
+     * Describes the business-logic of the application using [whenEventOccurs], [whenSeriesOfEventsOccur] and
+     * [performAction] methods.
+     */
     abstract fun start()
 
+    /**
+     * Instructs [all performers][FlowPerformer] of current [Flow] to perform the specified action.
+     * @param action - [Action] to be performed by [performers][FlowPerformer]
+     */
+    open fun performAction(action: Action) {
+        if (action is InitialAction
+            && (action is UnilateralInitialAction
+                    || (action is BilateralInitialAction && action.flowClass == javaClass))
+            && !isReplaying.get()
+        ) initialAction = action
+        if (action === initialAction) primaryPerformerInitializationCompleted.set(false)
+        performerUnderlays.values.forEach {
+            it.apply {
+                if (performerIsTemporarilyDetached.get())
+                    missedActions?.add(action)?.also { numberOfUnperformedActions.incrementAndGet() }
+                else
+                    numberOfUnperformedActions.incrementAndGet()
+            }
+        }
+        actionSubject.onNext(action)
+        if (action is BilateralInitialAction && action.flowClass != javaClass)
+            FlowStore.newPendingEntry(action.flowClass).performAction(action)
+    }
+
+    @PublishedApi
+    internal fun onPrimaryPerformerInitializationCompleted() {
+        primaryPerformerInitializationCompleted.set(true)
+        while (true) pendingEvents.poll()?.let { eventOccurred(it) } ?: break
+    }
+
+    /**
+     * Memorizes what needs to be done when the specified [Event] or its heirs occurs.
+     * @param E
+     * @param onEvent - will be called every time the specified [Event] occurs. NOTE that the body of this lambda should
+     * contain only calls to the [performAction] method and all the logic should be in [FlowPerformer].
+     */
     inline fun <reified E : Event> whenEventOccurs(crossinline onEvent: (E) -> Unit) {
         onEvents.add { if (it is E) onEvent(it) }
     }
 
+    /**
+     * Memorizes what needs to be done when a series (sequence) of specified events or their heirs occurs.
+     * @param E1
+     * @param E2
+     * @param onSeriesOfEvents - will be called every time a specified series of [events][Event] will occur. NOTE that
+     * the body of this lambda should contain only calls to the [performAction] method and all the logic should be in
+     * [FlowPerformer].
+     */
     inline fun <reified E1 : Event, reified E2 : Event> whenSeriesOfEventsOccur(
         crossinline onSeriesOfEvents: (E1, E2) -> Unit
     ) {
@@ -104,6 +152,15 @@ abstract class Flow {
             .let { disposables.add(it) }
     }
 
+    /**
+     * Memorizes what needs to be done when a series (sequence) of specified events or their heirs occurs.
+     * @param E1
+     * @param E2
+     * @param E3
+     * @param onSeriesOfEvents - will be called every time a specified series of [events][Event] will occur. NOTE that
+     * the body of this lambda should contain only calls to the [performAction] method and all the logic should be in
+     * [FlowPerformer].
+     */
     inline fun <reified E1 : Event, reified E2 : Event, reified E3 : Event> whenSeriesOfEventsOccur(
         crossinline onSeriesOfEvents: (E1, E2, E3) -> Unit
     ) {
@@ -127,6 +184,16 @@ abstract class Flow {
             .let { disposables.add(it) }
     }
 
+    /**
+     * Memorizes what needs to be done when a series (sequence) of specified events or their heirs occurs.
+     * @param E1
+     * @param E2
+     * @param E3
+     * @param E4
+     * @param onSeriesOfEvents - will be called every time a specified series of [events][Event] will occur. NOTE that
+     * the body of this lambda should contain only calls to the [performAction] method and all the logic should be in
+     * [FlowPerformer].
+     */
     inline fun <reified E1 : Event, reified E2 : Event, reified E3 : Event, reified E4 : Event> whenSeriesOfEventsOccur(
         crossinline onSeriesOfEvents: (E1, E2, E3, E4) -> Unit
     ) {
@@ -164,30 +231,6 @@ abstract class Flow {
             }
         } else
             pendingEvents.add(event)
-    }
-
-    open fun performAction(action: Action) {
-        if (action is InitialAction
-            && (action is UnilateralInitialAction
-                    || (action is BilateralInitialAction && action.flowClass == javaClass))
-            && !isReplaying.get()
-        ) initialAction = action
-        if (action === initialAction) primaryPerformerInitializationCompleted.set(false)
-        performerUnderlays.values.forEach { underlay ->
-            if (underlay.performerIsTemporarilyDetached.get())
-                underlay.missedActions?.add(action)?.also { underlay.numberOfUnperformedActions.incrementAndGet() }
-            else
-                underlay.numberOfUnperformedActions.incrementAndGet()
-        }
-        actionSubject.onNext(action)
-        if (action is BilateralInitialAction && action.flowClass != javaClass)
-            FlowStore.newPendingEntry(action.flowClass).performAction(action)
-    }
-
-    @PublishedApi
-    internal fun onPrimaryPerformerInitializationCompleted() {
-        primaryPerformerInitializationCompleted.set(true)
-        while (true) pendingEvents.poll()?.let { eventOccurred(it) } ?: break
     }
 
     @PublishedApi

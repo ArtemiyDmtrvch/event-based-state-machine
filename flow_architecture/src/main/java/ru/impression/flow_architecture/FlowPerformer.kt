@@ -8,10 +8,16 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- *
+ * Component that performs the business logic of the application described in [Flow]. To do this, it uses two main
+ * methods: [performAction] and [eventOccurred]. Each [Flow] can have several FlowPerformers (performer group) that
+ * work in isolation from each other (don't keep references to each other). However, one FlowPerformer can create
+ * another. In this case, it passes the [groupUUID] to the child FlowPerformer.
  */
 interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
 
+    /**
+     * Identifier of a group of FlowPerformers that are performing the same [Flow].
+     */
     val groupUUID: UUID
 
     val flow: F get() = FlowStore[groupUUID]!!
@@ -38,12 +44,9 @@ interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
         performMissedActions()
     }
 
-    fun eventOccurred(event: Event) {
-        flow.eventOccurred(event)
-    }
-
-    fun enrichEvent(event: Event) = Unit
-
+    /**
+     * Method that initiates all FlowPerformer's logic.
+     */
     fun performAction(action: Action)
 
     fun onInitialActionPerformed() {
@@ -57,6 +60,16 @@ interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
             while (true) missedActions?.poll()?.let { performAction(it) } ?: break
             missedActions = null
         }
+    }
+
+    /**
+     * Method by which FlowPerformer informs [Flow] that an [Event] has occurred. Call it, for example, in listeners:
+     * <pre>`buttonRegister.setOnClickListener { eventOccurred(RegistrationRequested()) }`</pre> or after completion of
+     * some action.
+     * @param event - [Event] to be passed to [Flow]
+     */
+    fun eventOccurred(event: Event) {
+        flow.eventOccurred(event)
     }
 
     fun temporarilyDetachFromFlow(cacheMissedActions: Boolean) {
