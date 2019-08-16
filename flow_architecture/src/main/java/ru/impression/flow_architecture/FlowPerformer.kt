@@ -9,9 +9,10 @@ import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Component that performs the business logic of the application described in [Flow]. To do this, it uses two main
- * methods: [performAction] and [eventOccurred]. Each [Flow] can have several FlowPerformers (performer group) that
- * work in isolation from each other (don't keep references to each other). However, one FlowPerformer can create
- * another. In this case, it passes the [groupUUID] to the child FlowPerformer.
+ * methods: [performAction] and [eventOccurred]. In the scope of one [Flow] there can be several FlowPerformers
+ * (performer group) that work in isolation from each other (don't keep references to each other). However, one
+ * FlowPerformer can create another. In this case, it passes the [groupUUID] to the child FlowPerformer.
+ * @see PrimaryFlowPerformer
  */
 interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
 
@@ -30,6 +31,9 @@ interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
                 ?: flow.performerUnderlays.remove(javaClass.notNullName)
         }
 
+    /**
+     * Defines the thread in which [performAction] method will be called.
+     */
     val observingScheduler get() = Schedulers.single()
 
     var disposable: Disposable?
@@ -40,12 +44,24 @@ interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
 
     fun onFlowInitializationFailure() = Unit
 
+    /**
+     * Called after performing some [Action], when we are convinced that the FlowPerformer has acquired its ground
+     * state and is ready to acquire an additional state. The ground state is a state that is acquired in the process of
+     * performing the first few [actions][Action], before the user interacts (for example, data downloaded from the
+     * server and displayed immediately after going to the page). An additional state is a state acquired as a result of
+     * interaction with a user (scroll position, text in a text field), as well as missed actions. You should call this
+     * method in FlowPerformer that uses [FlowPerformer.AttachmentType.REPLAY_ATTACHMENT].
+     */
     fun groundStateIsSet() {
         performMissedActions()
     }
 
     /**
-     * Method that initiates all FlowPerformer's logic.
+     * Called every time [Flow] instructs to perform [Action] if current FlowPerformer is attached to [Flow]. All
+     * FlowPerformer logic should be initiated by this method.
+     * @param action
+     * @see Flow.performAction
+     * @see attachToFlow
      */
     fun performAction(action: Action)
 
@@ -102,12 +118,36 @@ interface FlowPerformer<F : Flow, U : FlowPerformer.Underlay> {
         internal var missedActions: ConcurrentLinkedQueue<Action>? = null
     }
 
+    /**
+     * FlowPerformer and [Flow] behavior when attaching.
+     * @see attachToFlow
+     */
     enum class AttachmentType {
+        /**
+         * After attaching, FlowPerformer will immediately receive the last [Action] that was initiated by [Flow].
+         * @see FlowPerformer.performAction
+         * @see Flow.performAction
+         */
         NORMAL_ATTACHMENT,
+
+        /**
+         * Before attaching, [Flow] will order all its FlowPerformers to perform [InitialAction] that it cached, so
+         * after attaching the attached FlowPerformer will receive this [InitialAction], as well as all other
+         * FlowPerformers. As a result, it turns out that the sequence of [actions][Action] and [events][Event] that
+         * occurred in the scope of current [Flow] begins to repeat. This type of attachment is used so that
+         * FlowPerformer can regain its ground state after temporary detachment.
+         * @see groundStateIsSet
+         * @see temporarilyDetachFromFlow
+         */
         REPLAY_ATTACHMENT
     }
 }
 
+/**
+ * Called when [FlowPerformer] is ready to perform [actions][Action] and inform [Flow] about [events][Event] that have
+ * occurred.
+ * @param attachmentType - defines the behavior of [FlowPerformer] and [Flow] when attaching
+ */
 inline fun <F : Flow, reified U : FlowPerformer.Underlay> FlowPerformer<F, U>.attachToFlow(
     attachmentType: FlowPerformer.AttachmentType = FlowPerformer.AttachmentType.NORMAL_ATTACHMENT
 ) {
