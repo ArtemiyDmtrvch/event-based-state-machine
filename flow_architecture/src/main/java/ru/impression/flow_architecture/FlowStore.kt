@@ -4,6 +4,7 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
+@Suppress("UNCHECKED_CAST")
 internal object FlowStore : Iterable<Flow> {
 
     private val pendingFlows = ConcurrentLinkedQueue<Flow>()

@@ -85,8 +85,8 @@ abstract class Flow {
     abstract fun start()
 
     /**
-     * Instructs [all performers][FlowPerformer] of current [Flow] to perform the specified action.
-     * @param action - [Action] to be performed by [performers][FlowPerformer]
+     * Instructs [all performers][FlowPerformer] of this Flow to perform the specified [Action].
+     * @param action - action to be performed by performers
      */
     open fun performAction(action: Action) {
         if (action is InitialAction
@@ -117,7 +117,7 @@ abstract class Flow {
     /**
      * Memorizes what needs to be done when the specified [Event] or its heirs occurs.
      * @param E
-     * @param onEvent - will be called every time the specified [Event] occurs. NOTE that the body of this lambda should
+     * @param onEvent - will be called every time the specified event occurs. NOTE that the body of this lambda should
      * contain only calls to the [performAction] method and all the logic should be in [FlowPerformer].
      */
     inline fun <reified E : Event> whenEventOccurs(crossinline onEvent: (E) -> Unit) {
