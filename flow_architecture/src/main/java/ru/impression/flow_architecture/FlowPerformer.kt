@@ -62,7 +62,7 @@ interface FlowPerformer<F : Flow, U : Underlay> {
      * interaction with a user (scroll position, text in a text field), as well as missed actions. You should call this
      * method in FlowPerformer that uses [FlowPerformer.AttachmentType.REPLAY_ATTACHMENT].
      */
-    fun groundStateIsSet() {
+    fun obtainAdditionalState() {
         performMissedActions()
     }
 
@@ -163,7 +163,7 @@ interface FlowPerformer<F : Flow, U : Underlay> {
          * As a result, it turns out that the sequence of [actions][Action] and [events][Event] that occurred in the
          * scope of current Flow begins to repeat. This type of attachment is used so that FlowPerformer can regain
          * its ground state after temporary detachment.
-         * @see groundStateIsSet
+         * @see obtainAdditionalState
          * @see temporarilyDetachFromFlow
          */
         REPLAY_ATTACHMENT

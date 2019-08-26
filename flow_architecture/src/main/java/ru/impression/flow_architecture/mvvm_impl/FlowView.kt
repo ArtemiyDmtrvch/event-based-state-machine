@@ -24,9 +24,9 @@ interface FlowView<F : Flow, S : Any> :
     override val observingScheduler: Scheduler get() = AndroidSchedulers.mainThread()
 
     fun attachToFlow() {
-        underlay.apply {
+        underlay.let {
             attachToFlow(
-                if (this?.performerIsTemporarilyDetached?.get() == true && !layoutIsSet.get())
+                if (it?.performerIsTemporarilyDetached?.get() == true && !it.layoutIsSet.get())
                     FlowPerformer.AttachmentType.REPLAY_ATTACHMENT
                 else
                     FlowPerformer.AttachmentType.NORMAL_ATTACHMENT
@@ -53,9 +53,9 @@ interface FlowView<F : Flow, S : Any> :
         super.onInitialActionPerformed()
     }
 
-    override fun groundStateIsSet() {
+    override fun obtainAdditionalState() {
         viewStateSavingViewModel.additionalViewState?.let { additionalState = it }
-        super.groundStateIsSet()
+        super.obtainAdditionalState()
     }
 
     fun temporarilyDetachFromFlow() {
