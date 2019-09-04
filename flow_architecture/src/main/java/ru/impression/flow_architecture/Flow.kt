@@ -8,6 +8,7 @@ import io.reactivex.functions.Function4
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 import io.reactivex.subjects.ReplaySubject
+import io.reactivex.subjects.Subject
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -61,13 +62,13 @@ abstract class Flow {
     internal val onEvents = ConcurrentLinkedQueue<(Event) -> Unit>()
 
     @PublishedApi
-    internal val eventSubject = PublishSubject.create<Event>()
+    internal var eventSeriesSubject: Subject<Event>? = null
 
     @PublishedApi
-    internal val eventSeriesSubscriptionScheduler = Schedulers.io()
+    internal val eventSeriesSubscriptionScheduler by lazy { Schedulers.io() }
 
     @PublishedApi
-    internal val eventSeriesObservingScheduler = Schedulers.single()
+    internal val eventSeriesObservingScheduler by lazy { Schedulers.single() }
 
     @PublishedApi
     internal val disposables = CompositeDisposable()
@@ -135,21 +136,25 @@ abstract class Flow {
     inline fun <reified E1 : Event, reified E2 : Event> whenSeriesOfEventsOccur(
         crossinline onSeriesOfEvents: (E1, E2) -> Unit
     ) {
-        Observable
-            .zip(
-                eventSubject
-                    .filter { it is E1 }
-                    .map { it as E1 },
-                eventSubject
-                    .filter { it is E2 }
-                    .map { it as E2 },
-                BiFunction<E1, E2, Unit> { e1, e2 -> onSeriesOfEvents(e1, e2) }
-            )
-            .subscribeOn(eventSeriesSubscriptionScheduler)
-            .observeOn(eventSeriesObservingScheduler)
-            .doOnError { throw it }
-            .subscribe()
-            .let { disposables.add(it) }
+        if (eventSeriesSubject == null)
+            eventSeriesSubject = PublishSubject.create()
+        eventSeriesSubject?.let { eventSeriesSubject ->
+            Observable
+                .zip(
+                    eventSeriesSubject
+                        .filter { it is E1 }
+                        .map { it as E1 },
+                    eventSeriesSubject
+                        .filter { it is E2 }
+                        .map { it as E2 },
+                    BiFunction<E1, E2, Unit> { e1, e2 -> onSeriesOfEvents(e1, e2) }
+                )
+                .subscribeOn(eventSeriesSubscriptionScheduler)
+                .observeOn(eventSeriesObservingScheduler)
+                .doOnError { throw it }
+                .subscribe()
+                .let { disposables.add(it) }
+        }
     }
 
     /**
@@ -164,24 +169,28 @@ abstract class Flow {
     inline fun <reified E1 : Event, reified E2 : Event, reified E3 : Event> whenSeriesOfEventsOccur(
         crossinline onSeriesOfEvents: (E1, E2, E3) -> Unit
     ) {
-        Observable
-            .zip(
-                eventSubject
-                    .filter { it is E1 }
-                    .map { it as E1 },
-                eventSubject
-                    .filter { it is E2 }
-                    .map { it as E2 },
-                eventSubject
-                    .filter { it is E3 }
-                    .map { it as E3 },
-                Function3<E1, E2, E3, Unit> { e1, e2, e3 -> onSeriesOfEvents(e1, e2, e3) }
-            )
-            .subscribeOn(eventSeriesSubscriptionScheduler)
-            .observeOn(eventSeriesObservingScheduler)
-            .doOnError { throw it }
-            .subscribe()
-            .let { disposables.add(it) }
+        if (eventSeriesSubject == null)
+            eventSeriesSubject = PublishSubject.create()
+        eventSeriesSubject?.let { eventSeriesSubject ->
+            Observable
+                .zip(
+                    eventSeriesSubject
+                        .filter { it is E1 }
+                        .map { it as E1 },
+                    eventSeriesSubject
+                        .filter { it is E2 }
+                        .map { it as E2 },
+                    eventSeriesSubject
+                        .filter { it is E3 }
+                        .map { it as E3 },
+                    Function3<E1, E2, E3, Unit> { e1, e2, e3 -> onSeriesOfEvents(e1, e2, e3) }
+                )
+                .subscribeOn(eventSeriesSubscriptionScheduler)
+                .observeOn(eventSeriesObservingScheduler)
+                .doOnError { throw it }
+                .subscribe()
+                .let { disposables.add(it) }
+        }
     }
 
     /**
@@ -197,34 +206,40 @@ abstract class Flow {
     inline fun <reified E1 : Event, reified E2 : Event, reified E3 : Event, reified E4 : Event> whenSeriesOfEventsOccur(
         crossinline onSeriesOfEvents: (E1, E2, E3, E4) -> Unit
     ) {
-        Observable
-            .zip(
-                eventSubject
-                    .filter { it is E1 }
-                    .map { it as E1 },
-                eventSubject
-                    .filter { it is E2 }
-                    .map { it as E2 },
-                eventSubject
-                    .filter { it is E3 }
-                    .map { it as E3 },
-                eventSubject
-                    .filter { it is E4 }
-                    .map { it as E4 },
-                Function4<E1, E2, E3, E4, Unit> { e1, e2, e3, e4 -> onSeriesOfEvents(e1, e2, e3, e4) }
-            )
-            .subscribeOn(eventSeriesSubscriptionScheduler)
-            .observeOn(eventSeriesObservingScheduler)
-            .doOnError { throw it }
-            .subscribe()
-            .let { disposables.add(it) }
+        if (eventSeriesSubject == null)
+            eventSeriesSubject = PublishSubject.create()
+        eventSeriesSubject?.let { eventSeriesSubject ->
+            Observable
+                .zip(
+                    eventSeriesSubject
+                        .filter { it is E1 }
+                        .map { it as E1 },
+                    eventSeriesSubject
+                        .filter { it is E2 }
+                        .map { it as E2 },
+                    eventSeriesSubject
+                        .filter { it is E3 }
+                        .map { it as E3 },
+                    eventSeriesSubject
+                        .filter { it is E4 }
+                        .map { it as E4 },
+                    Function4<E1, E2, E3, E4, Unit> { e1, e2, e3, e4 ->
+                        onSeriesOfEvents(e1, e2, e3, e4)
+                    }
+                )
+                .subscribeOn(eventSeriesSubscriptionScheduler)
+                .observeOn(eventSeriesObservingScheduler)
+                .doOnError { throw it }
+                .subscribe()
+                .let { disposables.add(it) }
+        }
     }
 
     @PublishedApi
     internal fun eventOccurred(event: Event) {
         if (primaryPerformerInitializationCompleted.get()) {
             onEvents.forEach { it(event) }
-            eventSubject.onNext(event)
+            eventSeriesSubject?.onNext(event)
             if (event is GlobalEvent && !event.occurred) {
                 event.occurred = true
                 FlowStore.forEach { it.eventOccurred(event) }
